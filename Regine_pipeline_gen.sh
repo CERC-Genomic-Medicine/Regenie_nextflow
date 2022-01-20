@@ -20,4 +20,4 @@ job4=$(echo $jid4 | cut -f 4 -d " " -) ### Compute canada slurm does "Submitted 
 
 #Concat
 PHENO=$(head $InDir/$PheName -n 1 |  tr '\t' ' ' | wc -w)
-jid5=$(sbatch --account=$nameaccount --dependency=afterok:$job4 --cpus-per-task=10 --array=3-$PHENO%10 --time=10:15:00 --mem-per-cpu=8g $wkdir/test_regenie_concat.sh)
+jid5=$(sbatch --account=$nameaccount --dependency=afterok:$job4 --cpus-per-task=1 --array=3-$PHENO%10 --time=10:15:00 --mem-per-cpu=8g $wkdir/test_regenie_concat.sh)
