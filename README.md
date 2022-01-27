@@ -17,7 +17,7 @@ tested with  singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:v2.2.4.
 
 ## Process ##  
 ```
-nextflow run $PATH/pipeline_nextflow_2D.nf -c $PATH/nextflow.config
+nextflow run $PATH/Regenie.nf -c $PATH/nextflow.config
 
 ```
 
