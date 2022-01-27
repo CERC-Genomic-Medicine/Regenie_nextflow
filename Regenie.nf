@@ -5,7 +5,7 @@ process chunk_phenotype {
   
   publishDir params.OutDir
   input :
-
+// channel from path for phename
   output:
   file "chunk_*_phe.txt" into chunks_phenotypes,chunks_phenotypes_l0, chunks_phenotypes_l1, chunks_phenotypes_l2,numero  mode flatten
   stdout into Q
@@ -37,7 +37,6 @@ process step1_l0 {
 	label "STEP_1_0"
 	containerOptions "-B ${params.InDir}:$HOME/input"
 
-
 	input:
 file(chunk) from chunks_phenotypes 
 val(pheno) from Phenos
@@ -55,7 +54,7 @@ val(pheno) from Phenos
     --bgen \$HOME/input/${params.bfile} \
     --out test_bin_{$pheno} \
     --split-l0 fit_bin${pheno},${params.njobs} \
-    --threads 1 \
+    --threads ${params.Threads_S_10} \
     --extract \$HOME/input/qc_pass.snplist  \
     --force-step1 ${params.options}
 	"""
@@ -96,7 +95,7 @@ process step_1_l1 {
     --out test_bin_${pheno} \
     --run-l0 ${master},${i} \
     --extract \$HOME/input/qc_pass.snplist  \
-    --threads 1 ${params.options}
+    --threads ${params.Threads_S_11} ${params.options}
     
     touch ${i}.done
 	"""
@@ -132,7 +131,7 @@ process step_1_l2 {
     --out test_bin_${pheno} \
     --run-l1 ${m} \
     --keep-l0 \
-    --threads 1 \
+    --threads ${params.Threads_S_12} \
     --extract \$HOME/input/qc_pass.snplist  \
     --force-step1 ${params.options}
 	"""
@@ -143,7 +142,7 @@ process step_1_l2 {
 process step_2 {
 	label "STEP_2"
 	containerOptions "-B ${params.InDir}:$HOME/input"
-
+ 	cpus 1
     input:
   set val(pheno), file(chunk), file(pred_l) from pred_list
   each i from iter_s2
@@ -161,7 +160,7 @@ process step_2 {
     --bgen $HOME/input/${params.bfile} \
     --out step2_${i}.${pheno}.r\
     --pred ${pred_l} \
-    --threads 1 \
+    --threads ${params.Threads_S_2} \
     --extract ${snp} ${params.options}
 	"""
 }
