@@ -23,4 +23,6 @@ nextflow run $PATH/Regenie.nf -c $PATH/nextflow.config
 
 ## Output ##
 
-.regenie.gz file for each phenotype
+_[PHENOTYPE].regenie.gz file for each phenotype  
+Chunk_*_.phe.txt for each phenotype parallelisation (phenotype bin)  
+test_bin_[Phenotype_bin]_[Phenotype index in phenotype bin].loco.gz for each phenotype   
