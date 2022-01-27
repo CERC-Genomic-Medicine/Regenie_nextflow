@@ -5,7 +5,7 @@ process chunk_phenotype {
   
   publishDir params.OutDir
   input :
-// channel from path for phename
+
   output:
   file "chunk_*_phe.txt" into chunks_phenotypes,chunks_phenotypes_l0, chunks_phenotypes_l1, chunks_phenotypes_l2,numero  mode flatten
   stdout into Q
