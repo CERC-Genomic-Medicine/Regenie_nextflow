@@ -36,9 +36,7 @@ echo \$Q
 process step1_l0 {
 	label "STEP_1_0"
 	containerOptions "-B ${params.InDir}:$HOME/input"
-	cpus = 2
-  time = "12h"
-  memory = "6GB"
+
 
 	input:
 file(chunk) from chunks_phenotypes 
@@ -72,7 +70,7 @@ iter = Channel.from(range.by(1))
 process step_1_l1 {
 	label "STEP_1_1"
 	containerOptions "-B ${params.InDir}:$HOME/input"
-  cpu=1
+
 	input:
     file(master) from masterFiles
      each i from iter 
@@ -109,7 +107,7 @@ process step_1_l1 {
 process step_1_l2 {
 	label "STEP_1_2"
 	containerOptions "-B ${params.InDir}:$HOME/input"
- 	cpus 1
+
   
   publishDir params.OutDir
 
@@ -145,7 +143,7 @@ process step_1_l2 {
 process step_2 {
 	label "STEP_2"
 	containerOptions "-B ${params.InDir}:$HOME/input"
- 	cpus 1
+
     input:
   set val(pheno), file(chunk), file(pred_l) from pred_list
   each i from iter_s2
