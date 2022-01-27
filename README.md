@@ -1,4 +1,4 @@
-# Regenie_Pipe
+# Regenie_nextflow
 Pipeline implementation of Regenie
 
 ## Before Starting ##
