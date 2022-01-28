@@ -8,7 +8,6 @@ process chunk_phenotype {
 // channel from path for phename
   output:
   file "chunk_*_phe.txt" into chunks_phenotypes,chunks_phenotypes_l0, chunks_phenotypes_l1, chunks_phenotypes_l2,numero  mode flatten
-  stdout into Q
   """
 sed -i.bak \$'s/\t/ /g' ${params.InDir}"/"${params.PheName}
 Nb_PHENO=\$((\$(head ${params.InDir}"/"${params.PheName} -n 1 | wc -w ) - 2))
@@ -23,8 +22,7 @@ if [ \$val <=  1 ]
 then
 cat ${params.InDir}/${params.PheName}  | cut -f 1,2,\$((\$val * ${params.PheStep} + 3))-\$((\$Nb_PHENO + 2)) -d " " > chunk_"\$Q"_phe.txt
 fi
-echo \$Q
-	"""
+"""
 }
 
 (Phenos , Phenos_l0, Phenos_l1, Phenos_l2, Phenos_s2) =numero.flatMap {n ->  n.getBaseName().split('_')[1] }.into(4)
