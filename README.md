@@ -1,3 +1,5 @@
+Currently being tested
+
 # Regenie_nextflow
 Pipeline implementation of Regenie
 
