@@ -31,8 +31,6 @@ echo \$Q
 
 
 
-
-
 process step1_l0 {
 	label "STEP_1_0"
 	containerOptions "-B ${params.InDir}:$HOME/input"
@@ -142,6 +140,8 @@ process step_1_l2 {
 process step_2 {
 	label "STEP_2"
 	containerOptions "-B ${params.InDir}:$HOME/input"
+ 
+  publishDir params.OutDir
  	cpus 1
     input:
   set val(pheno), file(chunk), file(pred_l) from pred_list
@@ -161,7 +161,7 @@ process step_2 {
     --out step2_${i}.${pheno}.r\
     --pred ${pred_l} \
     --threads ${params.Threads_S_2} \
-    --extract ${snp} ${params.options}
+    --extract fit_bin${pheno}_job${i}.snplist ${params.options}
 	"""
 }
 
