@@ -1,3 +1,5 @@
+Example comparison still requiered
+
 # Regenie_nextflow
 Pipeline implementation of Regenie
 
