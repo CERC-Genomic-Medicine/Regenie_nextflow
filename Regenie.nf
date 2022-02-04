@@ -2,167 +2,178 @@
 process chunk_phenotype {
   label "chunk"
   executor "local"
-  
-  publishDir params.OutDir
+  cache "lenient"
+    
   input :
-// channel from path for phename
+  file pheno_file from Channel.fromPath(params.pheno_file) // phenotype file will be staged (usually with hard-link) to the work directory
+
   output:
-  file "chunk_*_phe.txt" into chunks_phenotypes,chunks_phenotypes_l0, chunks_phenotypes_l1, chunks_phenotypes_l2,numero  mode flatten
+  file "chunk_*_phe.txt" into chunks_phenotypes mode flatten
+  
+  publishDir "${params.OutDir}/chunked_pheno", pattern: "chunk_*_phe.txt", mode: "copy"
+
   """
-sed -i.bak \$'s/\t/ /g' ${params.InDir}"/"${params.PheName}
-Nb_PHENO=\$((\$(head ${params.InDir}"/"${params.PheName} -n 1 | wc -w ) - 2))
-val=\$((\$Nb_PHENO/${params.PheStep}))
-if [ \$val > 1 ]
-then
-for ((Q=1;Q<=\$val;Q++)); do
-cat ${params.InDir}/${params.PheName} | cut -f 1,2,\$((( \$Q - 1) * ${params.PheStep} + 3 ))-\$(((\$Q * ${params.PheStep}) + 2)) -d " " > chunk_"\$Q"_phe.txt
-done
-fi
-if [ \$val <=  1 ]
-then
-cat ${params.InDir}/${params.PheName}  | cut -f 1,2,\$((\$val * ${params.PheStep} + 3))-\$((\$Nb_PHENO + 2)) -d " " > chunk_"\$Q"_phe.txt
-fi
-"""
+  # make sure phenotype file is tab-delimited
+  cat ${pheno_file} | tr " " "\t" > temp_pheno_file.txt  
+  
+  Nb_PHENO=\$((\$(head -n 1 temp_pheno_file.txt | wc -w ) - 2)) 
+  val=\$((\$Nb_PHENO/${params.PheStep}))
+  if [[ \$val > 1 ]]; then
+    for ((Q=1;Q<=\$val;Q++)); do
+      cut -f 1,2,\$((( \$Q - 1) * ${params.PheStep} + 3 ))-\$(((\$Q * ${params.PheStep}) + 2)) temp_pheno_file.txt > chunk_\${Q}_phe.txt
+    done
+  else
+    cp temp_pheno_file.txt chunk_1_phe.txt
+  fi
+  """
 }
-
-(Phenos , Phenos_l0, Phenos_l1, Phenos_l2, Phenos_s2) =numero.flatMap {n ->  n.getBaseName().split('_')[1] }.into(4)
-
 
 
 process step1_l0 {
-	label "STEP_1_0"
-	containerOptions "-B ${params.InDir}:$HOME/input"
+  label "STEP_1_0"
+  cache "lenient"
+  scratch true
+  
+  input:
+  tuple val(pheno_chunk_no), file(pheno_chunk) from chunks_phenotypes.map { f -> [f.getBaseName().split('_')[1], f] } 
+  each file(bgen_file) from Channel.fromPath(params.bgen_file)
+  each file(covar_file) from Channel.fromPath(params.covar_file)
+  each file(common_variants_file) from Channel.fromPath(params.common_variants_file)
 
-	input:
-file(chunk) from chunks_phenotypes 
-val(pheno) from Phenos
-	output:
- file '*.master' into masterFiles,masterFiles_l1,masterFiles_l2
- file '*.log' into logs
- file "*.snplist" into snplists,snplists_l1,snplists_l2
-"""
-	regenie \
+  output:
+  tuple val(pheno_chunk_no), file(pheno_chunk), file("fit_bin${pheno_chunk_no}.master"), file("*.snplist") into step1_l0_split mode flatten
+  file "*.log" into step1_l0_logs
+
+  publishDir "${params.OutDir}/step1_l0_logs", pattern: "*.log", mode: "copy"
+ 
+  """
+  regenie \
     --step 1 \
     --loocv \
-    --phenoFile ${chunk} \
+    --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
     --gz \
-    --bgen \$HOME/input/${params.bfile} \
-    --out test_bin_{$pheno} \
-    --split-l0 fit_bin${pheno},${params.njobs} \
+    --bgen ${bgen_file} \
+    --out fit_bin_${pheno_chunk_no} \
+    --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
-    --extract \$HOME/input/qc_pass.snplist  \
+    --extract ${common_variants_file} \
+    --covarFile ${covar_file} \
     --force-step1 ${params.options}
-	"""
+  """
 }
 
-
-def range = 1..params.njobs
-iter = Channel.from(range.by(1))
-
-(iter,iter_s2)=iter.into(2)
 
 process step_1_l1 {
-	label "STEP_1_1"
-	containerOptions "-B ${params.InDir}:$HOME/input"
+  label "STEP_1_1"
+  cache "lenient"
+  scratch true
 
-	input:
-    file(master) from masterFiles
-     each i from iter 
-      file(chunk) from chunks_phenotypes_l0
-      val(pheno) from Phenos_l0
-      file(snplist) from snplists.collect()
-      file(log) from logs
+  input:
+  tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(snplist) from step1_l0_split
+  each file(bgen_file) from Channel.fromPath(params.bgen_file)
+  each file(sample_file) from Channel.fromPath(params.sample_file)
+  each file(covar_file) from Channel.fromPath(params.covar_file)
+
+  output:
+  tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file("*_l0_Y*") into step_1_l1
+  file "*.log" into step1_l1_logs
  
+  publishDir "${params.OutDir}/step1_l1_logs", pattern: "*.log", mode: "copy"
 
-
-	output:
- file("fit_bin*") into splited_files,splited_files_l2
- file("*.done") into omega
- 
-"""
-	regenie \
+  """
+  i=${snplist.getSimpleName().split('_')[2].replaceFirst('^job', '')}
+  regenie \
     --step 1 \
     --loocv \
-    --phenoFile ${chunk} \
+    --phenoFile ${pheno_chunk} \
+    --covarFile ${covar_file} \
     --bsize ${params.Bsize} \
+    --sample ${sample_file} \
     --gz \
-    --bgen \$HOME/input/${params.bfile} \
-    --out test_bin_${pheno} \
-    --run-l0 ${master},${i} \
-    --extract \$HOME/input/qc_pass.snplist  \
+    --bgen ${bgen_file} \
+    --out fit_bin_${pheno_chunk_no}_\${i} \
+    --run-l0 ${master},\${i} \
     --threads ${params.Threads_S_11} ${params.options}
-    
-    touch ${i}.done
-	"""
+  """
 }
-
 
 
 process step_1_l2 {
-	label "STEP_1_2"
-	containerOptions "-B ${params.InDir}:$HOME/input"
+  label "STEP_1_2"
+  cache "lenient"
+  scratch true
 
-  
-  publishDir params.OutDir
+  input:
+  tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(predictions) from step_1_l1.groupTuple(by: 0).map{ t -> [t[0], t[1][0], t[2][0], t[3].flatten()] }
+  each file(bgen_file) from Channel.fromPath(params.bgen_file)
+  each file(sample_file) from Channel.fromPath(params.sample_file)
+  each file(covar_file) from Channel.fromPath(params.covar_file)
+  each file(common_variants_file) from Channel.fromPath(params.common_variants_file)
 
-    input:
-  file m from masterFiles_l1
-  file(snp) from splited_files.collect() //doesn't wait for all iteration the last one to be finished
-  val(pheno) from Phenos_l1
-  file(chunk) from chunks_phenotypes_l1
+  output:       
+  tuple val(pheno_chunk_no), file(pheno_chunk), file("fit_bin${pheno_chunk_no}_loco_pred.list"), file("*.loco.gz") into step1_l2
+  file "*.log" into step1_l2_logs
 
-    output:       
-  set val(pheno), file(chunk),  file("test_bin_*_pred.list") into pred_list
-  file "*.loco.gz" into preds,pred_names 
-     """
-	regenie \
+  publishDir "${params.OutDir}/step1_l2_logs", pattern: "*.log", mode: "copy"
+
+  """
+  regenie \
     --step 1 \
     --loocv \
-    --covarFile \$HOME/input/${params.CovarName} \
-    --phenoFile ${chunk} \
+    --covarFile ${covar_file} \
+    --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
+    --sample ${sample_file} \
     --gz \
-    --bgen $HOME/input/${params.bfile} \
-    --out test_bin_${pheno} \
-    --run-l1 ${m} \
+    --bgen ${bgen_file} \
+    --out fit_bin${pheno_chunk_no}_loco \
+    --run-l1 ${master} \
     --keep-l0 \
     --threads ${params.Threads_S_12} \
-    --extract \$HOME/input/qc_pass.snplist  \
+    --extract ${common_variants_file} \
+    --use-relative-path \
     --force-step1 ${params.options}
-	"""
+  """
 }
-
 
 
 process step_2 {
-	label "STEP_2"
-	containerOptions "-B ${params.InDir}:$HOME/input"
- 
-  publishDir params.OutDir
- 	cpus 1
-    input:
-  set val(pheno), file(chunk), file(pred_l) from pred_list
-  each i from iter_s2
-  file(snp) from snplists_l1.collect()
-  
-  file preds from preds.collect()
+  label "STEP_2"
+  cache "lenient"
+  scratch true 
 
-   output:       
-  file "*.regenie" into regenies_split, regenies_split_names mode flatten
-     """
-    regenie \
+  input:
+  tuple val(pheno_chunk_no), file(pheno_chunk), file(loco_pred_list), file(loco_pred) from step1_l2
+  each file(bgen_file) from Channel.fromPath(params.bgen_file)
+  each file(sample_file) from Channel.fromPath(params.sample_file)
+  each file(covar_file) from Channel.fromPath(params.covar_file)
+
+  output:       
+  file "*.regenie.gz" into summary_stats
+  file "*.log" into step2_logs
+
+  publishDir "${params.OutDir}/step2_logs", pattern: "*.log", mode: "copy"
+  publishDir "${params.OutDir}/summary_stats", pattern: "*.regenie.gz", mode: "copy"
+
+  """
+  regenie \
     --step 2 \
-    --phenoFile ${chunk} \
+    --phenoFile ${pheno_chunk} \
+    --covarFile ${covar_file} \
     --bsize ${params.Bsize} \
-    --bgen $HOME/input/${params.bfile} \
-    --out step2_${i}.${pheno}.r\
-    --pred ${pred_l} \
-    --threads ${params.Threads_S_2} \
-    --extract fit_bin${pheno}_job${i}.snplist ${params.options}
-	"""
+    --bgen ${bgen_file} \
+    --out assoc_${pheno_chunk_no} \
+    --sample ${sample_file} \
+    --pred ${loco_pred_list} \
+    --gz \
+    --threads ${params.Threads_S_2} ${params.options}
+  """
 }
 
+
+
+/* NOT NEEDED 
 pheno_names = regenies_split_names.flatMap(n-> n.getBaseName().split('.r')[1]).unique()
 
 
@@ -189,3 +200,4 @@ process concat {
 	zip ${ph}.regenie.gz regenie.out
 	"""
 	}
+*/
