@@ -18,8 +18,8 @@ name=${VCF_file.getSimpleName().replaceAll('.vcf$', '')}
 
 plink2 \
   --vcf $VCF_file \
-  --pheno pheno_file \
-  --covar covar_file \
+  --pheno $pheno_file \
+  --covar $covar_file \
   --maf ${params.maf} --geno ${params.geno} --hwe ${params.HWE} \
   --mind ${params.mind} \
   --max-alleles 2  \
