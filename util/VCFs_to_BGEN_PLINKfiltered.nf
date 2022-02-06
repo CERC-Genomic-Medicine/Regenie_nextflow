@@ -2,8 +2,8 @@
 
 process Merge_Plinked {
   label "BGEN_generation_Merge_VCF"
-  executor "local"
   cache "lenient"
+  scratch true
     
   input :
   file(VCF_file) from Channel.fromPath(params.VCF_files).flatten().collect()
