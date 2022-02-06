@@ -1,5 +1,3 @@
-Example comparison still requiered
-
 # Regenie_nextflow
 Pipeline implementation of Regenie
 
@@ -23,8 +21,18 @@ nextflow run $PATH/Regenie.nf -c $PATH/nextflow.config
 
 ```
 
-## Output ##
+# Regenie_nextflow/Util
+useful pre-Regenie data handling
+software needed : BCFTOOLS and Plink version > 2  
 
-_[PHENOTYPE].regenie.gz file for each phenotype  
-Chunk_*_.phe.txt for each phenotype parallelisation (phenotype bin)  
-test_bin_[Phenotype_bin]_[Phenotype index in phenotype bin].loco.gz for each phenotype   
+ - VCFs_to_BGEN_PLINKfiltered.nf             //VCFs transition to BGEN (many to one) with filters [config default no filter]  
+ - VCFs_to_BGENs_PLINKfiltered.nf            //VCFs transition to BGENs (many to many) with filters [config default no filter]
+
+modify util.config for filtering
+
+Usage
+```
+nextflow run $PATH/[script].nf -c $PATH/util.config
+```
+
+
