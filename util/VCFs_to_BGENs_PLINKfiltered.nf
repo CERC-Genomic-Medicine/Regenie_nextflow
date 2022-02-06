@@ -2,8 +2,8 @@
 
 process Plinked {
   label "BGEN_generation"
-  executor "local"
   cache "lenient"
+  scratch true
     
   input :
   each file(VCF_file) from Channel.fromPath(params.VCF_files).flatten()
