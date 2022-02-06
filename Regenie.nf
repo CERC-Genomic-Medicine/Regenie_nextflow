@@ -171,33 +171,3 @@ process step_2 {
   """
 }
 
-
-
-/* NOT NEEDED 
-pheno_names = regenies_split_names.flatMap(n-> n.getBaseName().split('.r')[1]).unique()
-
-
-
-process concat {
-  executor "local"
-	label "Concat"
- 
- publishDir params.OutDir
-
-	input :
-	val(ph) from pheno_names
-	file(regenie) from regenies_split.collect()
-
-	output :
-	file("*.regenie.gz") into ENDING
-
-	"""
-	cat step2_1.*.r${ph}.regenie > regenie.out
-	for ((J=2; J<=${params.njobs}; J++))
-		do
-		sed 1d step2_"\$J".*.r${ph}.regenie >> regenie.out
-		done
-	zip ${ph}.regenie.gz regenie.out
-	"""
-	}
-*/
