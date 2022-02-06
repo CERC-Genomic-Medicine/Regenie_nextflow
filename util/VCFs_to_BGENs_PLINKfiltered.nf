@@ -14,7 +14,7 @@ process Plinked {
   file "*.bgen" into bgen_file mode flatten
     publishDir "${params.OutDir}/BGEN", pattern: "*.bgen", mode: "copy"
   """
-name=${VCF_file.getSimpleName().replaceAll('.vcf$', '')}  
+name=${VCF_file.getName().replaceAll('.vcf.gz$', '')}  
 
 plink2 \
   --vcf $VCF_file \
