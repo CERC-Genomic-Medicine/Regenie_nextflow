@@ -38,7 +38,6 @@ process step1_l0 {
   tuple val(pheno_chunk_no), file(pheno_chunk) from chunks_phenotypes.map { f -> [f.getBaseName().split('_')[1], f] } 
   each file(bgen_file) from Channel.fromPath(params.bgen_file)
   each file(covar_file) from Channel.fromPath(params.covar_file)
-  each file(common_variants_file) from Channel.fromPath(params.common_variants_file)
 
   output:
   tuple val(pheno_chunk_no), file(pheno_chunk), file("fit_bin${pheno_chunk_no}.master"), file("*.snplist") into step1_l0_split mode flatten
@@ -57,7 +56,6 @@ process step1_l0 {
     --out fit_bin_${pheno_chunk_no} \
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
-    --extract ${common_variants_file} \
     --covarFile ${covar_file} \
     --force-step1 ${params.options}
   """
@@ -109,7 +107,6 @@ process step_1_l2 {
   each file(bgen_file) from Channel.fromPath(params.bgen_file)
   each file(sample_file) from Channel.fromPath(params.sample_file)
   each file(covar_file) from Channel.fromPath(params.covar_file)
-  each file(common_variants_file) from Channel.fromPath(params.common_variants_file)
 
   output:       
   tuple val(pheno_chunk_no), file(pheno_chunk), file("fit_bin${pheno_chunk_no}_loco_pred.list"), file("*.loco.gz") into step1_l2
@@ -120,7 +117,6 @@ process step_1_l2 {
   """
   regenie \
     --step 1 \
-    --loocv \
     --covarFile ${covar_file} \
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
@@ -131,7 +127,6 @@ process step_1_l2 {
     --run-l1 ${master} \
     --keep-l0 \
     --threads ${params.Threads_S_12} \
-    --extract ${common_variants_file} \
     --use-relative-path \
     --force-step1 ${params.options}
   """
@@ -145,8 +140,8 @@ process step_2 {
 
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(loco_pred_list), file(loco_pred) from step1_l2
-  each file(bgen_file) from Channel.fromPath(params.bgen_file)
-  each file(sample_file) from Channel.fromPath(params.sample_file)
+  each file(bgen_file) from Channel.fromPath(params.test_variants_file)
+  each file(sample_file) from Channel.fromPath(params.sample_file).flatten()
   each file(covar_file) from Channel.fromPath(params.covar_file)
 
   output:       
@@ -157,17 +152,16 @@ process step_2 {
   publishDir "${params.OutDir}/summary_stats", pattern: "*.regenie.gz", mode: "copy"
 
   """
+  name=${bgen_file.getName().replaceAll('.bgen$', '')}
   regenie \
     --step 2 \
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \
     --bsize ${params.Bsize} \
     --bgen ${bgen_file} \
-    --out assoc_${pheno_chunk_no} \
-    --sample ${sample_file} \
+    --out "\$name"_assoc_${pheno_chunk_no} \
     --pred ${loco_pred_list} \
     --gz \
     --threads ${params.Threads_S_2} ${params.options}
   """
 }
-
