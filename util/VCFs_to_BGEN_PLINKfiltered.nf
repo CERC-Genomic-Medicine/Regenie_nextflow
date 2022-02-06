@@ -8,7 +8,8 @@ process Merge_Plinked {
   input :
   file(VCF_file) from Channel.fromPath(params.VCF_files).flatten().collect()
   file(VCF_file_index) from Channel.fromPath(params.VCF_files_indexes).flatten().collect()
-  file pheno_file from Channel.fromPath(params.pheno_file)
+  each file(pheno_file) from Channel.fromPath(params.pheno_file)
+  each file(covar_file) from Channel.fromPath(params.covar_file)
   val(out) from params.outname
 
   output:
@@ -20,6 +21,7 @@ bcftools concat ${VCF_file} -o VCF.vcf
 plink2 \
   --vcf VCF.vcf \
   --pheno ${pheno_file} \
+  --covar ${covar_file} \
   --maf ${params.maf} --geno ${params.geno} --hwe ${params.HWE} \
   --mind ${params.mind} \
   --max-alleles 2  \
