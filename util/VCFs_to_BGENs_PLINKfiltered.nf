@@ -10,8 +10,13 @@ process Plinked {
 
 
   output:
-  file "*.bgen" into bgen_file mode flatten
+  output:  
+  file "*" into bgen_file mode flatten
     publishDir "${params.OutDir}/BGEN", pattern: "*.bgen", mode: "copy"
+    publishDir "${params.OutDir}/LOG", pattern: "*.log", mode: "copy"
+    publishDir "${params.OutDir}/SAMPLE", pattern: "*.sample", mode: "copy"
+    publishDir "${params.OutDir}/PRUNE/IN", pattern: "*.prune.in", mode: "copy" //optional
+    publishDir "${params.OutDir}/PRUNE/OUT", pattern: "*.prune.out", mode: "copy" //optional
   """
 name=${VCF_file.getName().replaceAll('.vcf.gz$', '')}  
 
