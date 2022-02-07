@@ -141,7 +141,7 @@ process step_2 {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(loco_pred_list), file(loco_pred) from step1_l2
   each file(bgen_file) from Channel.fromPath(params.test_variants_file)
-  each file(sample_file) from Channel.fromPath(params.sample_file).flatten()
+  each file(sample_file) from Channel.fromPath(params.sample_file).
   each file(covar_file) from Channel.fromPath(params.covar_file)
 
   output:       
