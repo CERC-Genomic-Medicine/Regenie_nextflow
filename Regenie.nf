@@ -92,7 +92,7 @@ process step_1_l1 {
     --bgen ${bgen_file} \
     --out fit_bin_${pheno_chunk_no}_\${i} \
     --run-l0 ${master},\${i} \
-    --threads ${params.Threads_S_11} ${params.options}
+    --threads ${params.Threads_S_11} ${params.options_s1}
   """
 }
 
@@ -128,7 +128,7 @@ process step_1_l2 {
     --keep-l0 \
     --threads ${params.Threads_S_12} \
     --use-relative-path \
-    --force-step1 ${params.options}
+    --force-step1 ${params.options_s1}
   """
 }
 
@@ -162,6 +162,6 @@ process step_2 {
     --out "\$name"_assoc_${pheno_chunk_no} \
     --pred ${loco_pred_list} \
     --gz \
-    --threads ${params.Threads_S_2} ${params.options}
+    --threads ${params.Threads_S_2} ${params.options_s2}
   """
 }
