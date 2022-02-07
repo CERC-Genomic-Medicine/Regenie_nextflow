@@ -19,7 +19,6 @@ plink2 \
   --vcf $VCF_file \
   --maf ${params.maf} \ 
   --geno ${params.geno} \
-  --hwe ${params.HWE} \
   --mind ${params.mind} \
   --max-alleles 2  \
   --export bgen-1.2 ${params.Plink2_Options} \
