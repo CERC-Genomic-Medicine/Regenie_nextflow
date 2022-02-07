@@ -28,7 +28,7 @@ software needed : BCFTOOLS and Plink version > 2
  - VCFs_to_BGEN_PLINKfiltered.nf             //VCFs transition to BGEN (many to one) with filters [config default no filter]  
  - VCFs_to_BGENs_PLINKfiltered.nf            //VCFs transition to BGENs (many to many) with filters [config default no filter]
 
-default config includes no filtering
+default config includes no filtering  
 standard config is based on REGENIE paper (UK BioBank processing).
 
 Usage
