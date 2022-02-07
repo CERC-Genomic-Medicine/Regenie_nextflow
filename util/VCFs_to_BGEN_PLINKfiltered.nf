@@ -11,7 +11,7 @@ process Merge_Plinked {
   val(out) from params.outname
 
   output:
-  file "*.bgen" into bgen_file mode flatten
+  file "*.bgen" into bgen_file
   publishDir "${params.OutDir}/BGEN", pattern: "*.bgen", mode: "copy"
   """
 bcftools concat ${VCF_file} -o VCF.vcf
