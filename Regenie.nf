@@ -57,7 +57,7 @@ process step1_l0 {
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
     --covarFile ${covar_file} \
-    --force-step1 ${params.options}
+    --force-step1 ${params.options_s1}
   """
 }
 
