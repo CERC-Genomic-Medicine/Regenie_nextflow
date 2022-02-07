@@ -10,15 +10,22 @@ process Merge_Plinked {
   file(VCF_file_index) from Channel.fromPath(params.VCF_files_indexes).collect()
   val(out) from params.outname
 
-  output:
-  file "*.bgen" into bgen_file
-  publishDir "${params.OutDir}/BGEN", pattern: "*.bgen", mode: "copy"
+  output:  
+  file "*" into bgen_file mode flatten
+    publishDir "${params.OutDir}/BGEN", pattern: "*.bgen", mode: "copy"
+    publishDir "${params.OutDir}/LOG", pattern: "*.log", mode: "copy"
+    publishDir "${params.OutDir}/SAMPLE", pattern: "*.sample", mode: "copy"
+    publishDir "${params.OutDir}/PRUNE/IN", pattern: "*.prune.in", mode: "copy" //optional
+    publishDir "${params.OutDir}/PRUNE/OUT", pattern: "*.prune.out", mode: "copy" //optional
+    
   """
 bcftools concat ${VCF_file} -o VCF.vcf
 
 plink2 \
   --vcf VCF.vcf \
-  --maf ${params.maf} --geno ${params.geno} --hwe ${params.HWE} \
+  --maf ${params.maf} \
+  --geno ${params.geno} \
+  --hwe ${params.HWE} \
   --mind ${params.mind} \
   --max-alleles 2  \
   --export bgen-1.2 ${params.Plink2_Options} \
