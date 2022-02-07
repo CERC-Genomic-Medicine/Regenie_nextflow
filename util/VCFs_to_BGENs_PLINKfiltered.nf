@@ -7,8 +7,7 @@ process Plinked {
     
   input :
   each file(VCF_file) from Channel.fromPath(params.VCF_files).flatten()
-  each file(covar_file) from Channel.fromPath(params.covar_file)
-  file pheno_file from Channel.fromPath(params.pheno_file)
+
 
   output:
   file "*.bgen" into bgen_file mode flatten
@@ -18,8 +17,6 @@ name=${VCF_file.getName().replaceAll('.vcf.gz$', '')}
 
 plink2 \
   --vcf $VCF_file \
-  --pheno $pheno_file \
-  --covar $covar_file \
   --maf ${params.maf} --geno ${params.geno} --hwe ${params.HWE} \
   --mind ${params.mind} \
   --max-alleles 2  \
