@@ -6,7 +6,7 @@ process Plinked {
   scratch true
     
   input :
-  each file(VCF_file) from Channel.fromPath(params.VCF_files).flatten()
+  each file(VCF_file) from Channel.fromPath(params.VCF_files)
 
 
   output:
@@ -17,7 +17,9 @@ name=${VCF_file.getName().replaceAll('.vcf.gz$', '')}
 
 plink2 \
   --vcf $VCF_file \
-  --maf ${params.maf} --geno ${params.geno} --hwe ${params.HWE} \
+  --maf ${params.maf} \ 
+  --geno ${params.geno} \
+  --hwe ${params.HWE} \
   --mind ${params.mind} \
   --max-alleles 2  \
   --export bgen-1.2 ${params.Plink2_Options} \
