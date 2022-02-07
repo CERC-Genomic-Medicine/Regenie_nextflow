@@ -6,8 +6,8 @@ process Merge_Plinked {
   scratch true
     
   input :
-  file(VCF_file) from Channel.fromPath(params.VCF_files).flatten().collect()
-  file(VCF_file_index) from Channel.fromPath(params.VCF_files_indexes).flatten().collect()
+  file(VCF_file) from Channel.fromPath(params.VCF_files).collect()
+  file(VCF_file_index) from Channel.fromPath(params.VCF_files_indexes).collect()
   val(out) from params.outname
 
   output:
