@@ -86,13 +86,14 @@ When:
   Channel.fromPath(params.CommonVar_file).getExtension() == "pgen"
 
   """
+      name=${pvar.baseName}
   regenie \
     --step 1 \
     --loocv \
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
     --gz \
-    --pgen ${bgen_file} \
+    --pgen \$name \
     --out fit_bin_${pheno_chunk_no} \
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
@@ -157,15 +158,15 @@ process step_1_l1_pgen {
 When:
   Channel.fromPath(params.CommonVar_file).getExtension() == "pgen"
   """
+      name=${pvar.baseName}
   i=${snplist.getSimpleName().split('_')[2].replaceFirst('^job', '')}
   regenie \
     --step 1 \
     --loocv \
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
-    --sample ${sample_file} \
     --gz \
-    --pgen ${bgen_file} \
+    --pgen \$name \
     --out fit_bin_${pheno_chunk_no}_\${i} \
     --run-l0 ${master},\${i} \
     --threads ${params.Threads_S_11} ${params.options}
@@ -233,13 +234,13 @@ When:
   Channel.fromPath(params.CommonVar_file).getExtension() == "pgen"
 
   """
+    name=${pvar.baseName}
   regenie \
     --step 1 \
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
-    --sample ${sample_file} \
     --gz \
-    --pgen ${bgen_file} \
+    --pgen\$name \
     --out fit_bin${pheno_chunk_no}_loco \
     --run-l1 ${master} \
     --keep-l0 \
