@@ -34,7 +34,7 @@ nextflow run $PATH/Regenie.nf -c $PATH/nextflow.config
 ```
 
 # Regenie_nextflow/Util
-useful pre-Regenie data handling
+useful pre-Regenie data handling  
 software needed : BCFTOOLS, Plink version > 2, bgenix tool
   
   VCF(s)_to_B(P)GEN(s) usefull to produce pipeline input.
