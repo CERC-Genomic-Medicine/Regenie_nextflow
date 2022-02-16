@@ -60,7 +60,7 @@ When:
     --out fit_bin_${pheno_chunk_no} \
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
-    --force-step1 ${params.options}
+    --force-step1 ${params.options_s1}
   """
 }
 
@@ -97,7 +97,7 @@ When:
     --out fit_bin_${pheno_chunk_no} \
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
-    --force-step1 ${params.options}
+    --force-step1 ${params.options_s1}
   """
 }
 
@@ -110,7 +110,7 @@ process step_1_l1_bgen {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(snplist) from step1_l0_split
   each file(bgen_file) from Channel.fromPath(params.CommonVar_file)
-  each file(sample_file) from Channel.fromPath(params.sample_file)
+  file(sample_file) from Channel.fromPath(params.sample_file)
 
 
   output:
@@ -132,7 +132,7 @@ When:
     --bgen ${bgen_file} \
     --out fit_bin_${pheno_chunk_no}_\${i} \
     --run-l0 ${master},\${i} \
-    --threads ${params.Threads_S_11} ${params.options}
+    --threads ${params.Threads_S_11} ${params.options_s1}
   """
 }
 
@@ -169,7 +169,7 @@ When:
     --pgen \$name \
     --out fit_bin_${pheno_chunk_no}_\${i} \
     --run-l0 ${master},\${i} \
-    --threads ${params.Threads_S_11} ${params.options}
+    --threads ${params.Threads_S_11} ${params.options_s1}
   """
 }
 
@@ -207,7 +207,7 @@ When:
     --keep-l0 \
     --threads ${params.Threads_S_12} \
     --use-relative-path \
-    --force-step1 ${params.options}
+    --force-step1 ${params.options_s1}
   """
 }
 
@@ -246,7 +246,7 @@ When:
     --keep-l0 \
     --threads ${params.Threads_S_12} \
     --use-relative-path \
-    --force-step1 ${params.options}
+    --force-step1 ${params.options_s1}
   """
 }
 
@@ -282,7 +282,7 @@ When:
     --out "\$name"_assoc_${pheno_chunk_no} \
     --pred ${loco_pred_list} \
     --gz \
-    --threads ${params.Threads_S_2} ${params.options}
+    --threads ${params.Threads_S_2} ${params.options_s2}
   """
 }
 
@@ -294,7 +294,7 @@ process step_2_bgen {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(loco_pred_list), file(loco_pred) from step1_l2
   each file(bgen_file) from Channel.fromPath(params.test_variants_file)
-  each file(sample_file) from Channel.fromPath(params.sample_file)
+   file(sample_file) from Channel.fromPath(params.sample_file_s2)
   each file(covar_file) from Channel.fromPath(params.covar_file)
 
   output:       
