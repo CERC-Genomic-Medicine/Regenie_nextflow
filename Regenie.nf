@@ -37,7 +37,7 @@ process step1_l0_bgen {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk) from chunks_phenotypes.map { f -> [f.getBaseName().split('_')[1], f] } 
   each file(bgen_file) from Channel.fromPath(params.CommonVar_file)
-
+  file(covar_file) from Channel.fromPath(params.covar_file)
 
 
   output:
