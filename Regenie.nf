@@ -54,6 +54,7 @@ When:
     --step 1 \
     --loocv \
     --phenoFile ${pheno_chunk} \
+    --covarFile ${covar_file} \
     --bsize ${params.Bsize} \
     --gz \
     --bgen ${bgen_file} \
@@ -74,6 +75,7 @@ process step1_l0_pgen {
   each file(pgen_file) from Channel.fromPath(params.CommonVar_file)
     file(pvar) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.pvar'))
     file(psam) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.psam'))
+  file(covar_file) from Channel.fromPath(params.covar_file)
 
 
   output:
@@ -91,6 +93,7 @@ When:
     --step 1 \
     --loocv \
     --phenoFile ${pheno_chunk} \
+    --covarFile ${covar_file} \
     --bsize ${params.Bsize} \
     --gz \
     --pgen \$name \
@@ -110,7 +113,8 @@ process step_1_l1_bgen {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(snplist) from step1_l0_split
   each file(bgen_file) from Channel.fromPath(params.CommonVar_file)
-  file(sample_file) from Channel.fromPath(params.sample_file)
+   file(sample_file) from Channel.fromPath(params.sample_file)
+  file(covar_file) from Channel.fromPath(params.covar_file)
 
 
   output:
@@ -126,6 +130,7 @@ When:
     --step 1 \
     --loocv \
     --phenoFile ${pheno_chunk} \
+    --covarFile ${covar_file} \
     --bsize ${params.Bsize} \
     --sample ${sample_file} \
     --gz \
@@ -147,6 +152,7 @@ process step_1_l1_pgen {
   each file(bgen_file) from Channel.fromPath(params.CommonVar_file)
     file(pvar) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.pvar'))
     file(psam) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.psam'))
+  file(covar_file) from Channel.fromPath(params.covar_file)
 
 
 
@@ -164,6 +170,7 @@ When:
     --step 1 \
     --loocv \
     --phenoFile ${pheno_chunk} \
+    --covarFile ${covar_file} \
     --bsize ${params.Bsize} \
     --gz \
     --pgen \$name \
@@ -183,6 +190,7 @@ process step_1_l2_bgen {
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(predictions) from step_1_l1.groupTuple(by: 0).map{ t -> [t[0], t[1][0], t[2][0], t[3].flatten()] }
   each file(bgen_file) from Channel.fromPath(params.CommonVar_file)
    file(sample_file) from Channel.fromPath(params.sample_file)
+  file(covar_file) from Channel.fromPath(params.covar_file)
 
 
   output:       
@@ -198,6 +206,7 @@ When:
   regenie \
     --step 1 \
     --phenoFile ${pheno_chunk} \
+    --covarFile ${covar_file} \
     --bsize ${params.Bsize} \
     --sample ${sample_file} \
     --gz \
@@ -221,6 +230,7 @@ process step_1_l2_pgen {
   each file(bgen_file) from Channel.fromPath(params.CommonVar_file)
     file(pvar) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.pvar'))
     file(psam) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.psam'))
+  file(covar_file) from Channel.fromPath(params.covar_file)
   
 
 
@@ -240,6 +250,7 @@ When:
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
     --gz \
+    --covarFile ${covar_file} \
     --pgen\$name \
     --out fit_bin${pheno_chunk_no}_loco \
     --run-l1 ${master} \
@@ -261,6 +272,7 @@ process step_2_pgen {
   each file(pgen) from Channel.fromPath(params.test_variants_file) // pgen (& associate) is seemingly faster (see documentation)
     file(pvar) from Channel.fromPath(params.test_variants_file.replaceAll('.pgen$', '.pvar'))
     file(psam) from Channel.fromPath(params.test_variants_file.replaceAll('.pgen$', '.psam'))
+  file(covar_file) from Channel.fromPath(params.covar_file)
 
   output:       
   file "*.regenie.gz" into summary_stats
@@ -280,6 +292,7 @@ When:
     --bsize ${params.Bsize} \
     --pgen \$name \
     --out "\$name"_assoc_${pheno_chunk_no} \
+    --covarFile ${covar_file} \
     --pred ${loco_pred_list} \
     --gz \
     --threads ${params.Threads_S_2} ${params.options_s2}
@@ -295,7 +308,7 @@ process step_2_bgen {
   tuple val(pheno_chunk_no), file(pheno_chunk), file(loco_pred_list), file(loco_pred) from step1_l2
   each file(bgen_file) from Channel.fromPath(params.test_variants_file)
    file(sample_file) from Channel.fromPath(params.sample_file_s2)
-  each file(covar_file) from Channel.fromPath(params.covar_file)
+  file(covar_file) from Channel.fromPath(params.covar_file)
 
   output:       
   file "*.regenie.gz" into summary_stats
