@@ -76,6 +76,6 @@ process merge {
   find . -name "*.vcf.gz" | sort -V > files.txt
   bcftools concat -n -f files.txt -Oz -o all.common_independent_snps.vcf.gz
   bcftools index -t all.common_independent_snps.vcf.gz
-  plink2 --vcf all.common_independant_snps.vcf.gz --make-pgen 'erase-phase' ${Plink2_Options} --out all.common_independant_snps
+  plink2 --vcf all.common_independent_snps.vcf.gz --make-pgen 'erase-phase' ${params.Plink2_Options} --out all.common_independent_snps
  """
 }
