@@ -162,6 +162,7 @@ process step_2_bgen {
     --covarFile ${covar_file} \
     --bsize ${params.Bsize} \
     --bgen ${bgen_file} \
+    --sample ${sample_file} \
     --out "\$name"_assoc_${pheno_chunk_no} \
     --pred ${loco_pred_list} \
     --gz \
