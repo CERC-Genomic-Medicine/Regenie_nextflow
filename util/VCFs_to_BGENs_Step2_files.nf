@@ -12,7 +12,7 @@ process Plinked {
   output:
   file "*.bgen" into BGEN_file mode flatten
       publishDir "${params.OutDir}/BGEN", pattern: "*.bgen", mode: "copy"
-  file "*.sample" into BGEN_file mode flatten
+  file "*.sample" into sample_file mode flatten
       publishDir "${params.OutDir}/BGEN", pattern: "*.bgen", mode: "copy"
   file "*.bgi" into BGI_file mode flatten
       publishDir "${params.OutDir}/BGEN", pattern: "*.bgi", mode: "copy"
