@@ -76,7 +76,7 @@ process merge {
   bcftools concat -n -f files.txt -Oz -o all.common_independent_snps.vcf.gz
   gunzip -k all.common_independent_snps.vcf.gz
   bcftools index -t all.common_independent_snps.vcf.gz
-  bash ${workflow.scriptFile.getParent()}/Scripts/dePhasing.sh
+  bash ${workflow.scriptFile.getParent()}/Scripts/dephasing.sh
   qctool_v2.2.0 -g all.common_independent_snps.vcf -filetype vcf -bgen-bits 8 -og all.common_independent_snps.bgen -os all.common_independent_snps.sample
   bgenix -index -g all.common_independent_snps.bgen
  """
