@@ -1,3 +1,6 @@
+// Parallelisation : 2D paralelisation of Regenie (SNP block / Phenotype) 
+// Using bgen input (can be generated with util/VCFs_to_BGENs_Step*_files.nf
+
 
 process chunk_phenotype {
   label "chunk"
