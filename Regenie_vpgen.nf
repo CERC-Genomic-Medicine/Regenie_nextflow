@@ -39,9 +39,9 @@ process step1_l0_pgen {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk) from chunks_phenotypes.map { f -> [f.getBaseName().split('_')[1], f] } 
   each file(pgen_file) from Channel.fromPath(params.CommonVar_file)
-    file(pvar) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.pvar'))
-    file(psam) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.psam'))
-  file(covar_file) from Channel.fromPath(params.covar_file)
+    each file(pvar) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.pvar'))
+    each file(psam) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.psam'))
+  each file(covar_file) from Channel.fromPath(params.covar_file)
 
 
   output:
@@ -79,9 +79,9 @@ process step_1_l1_pgen {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(snplist) from step1_l0_split
   each file(bgen_file) from Channel.fromPath(params.CommonVar_file)
-    file(pvar) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.pvar'))
-    file(psam) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.psam'))
-  file(covar_file) from Channel.fromPath(params.covar_file)
+    each file(pvar) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.pvar'))
+    each file(psam) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.psam'))
+  each file(covar_file) from Channel.fromPath(params.covar_file)
 
 
 
@@ -118,9 +118,9 @@ process step_1_l2_pgen {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(predictions) from step_1_l1.groupTuple(by: 0).map{ t -> [t[0], t[1][0], t[2][0], t[3].flatten()] }
   each file(bgen_file) from Channel.fromPath(params.CommonVar_file)
-    file(pvar) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.pvar'))
-    file(psam) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.psam'))
-  file(covar_file) from Channel.fromPath(params.covar_file)
+    each file(pvar) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.pvar'))
+    each file(psam) from Channel.fromPath(params.CommonVar_file.replaceAll('.pgen$', '.psam'))
+  each file(covar_file) from Channel.fromPath(params.covar_file)
   
 
 
@@ -138,7 +138,7 @@ process step_1_l2_pgen {
     --bsize ${params.Bsize} \
     --gz \
     --covarFile ${covar_file} \
-    --pgen\$name \
+    --pgen \$name \
     --out fit_bin${pheno_chunk_no}_loco \
     --run-l1 ${master} \
     --keep-l0 \
