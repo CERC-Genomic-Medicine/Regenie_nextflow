@@ -157,8 +157,8 @@ process step_2_pgen {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(loco_pred_list), file(loco_pred) from step1_l2
   each file(pgen) from Channel.fromPath(params.test_variants_file) // pgen (& associate) is seemingly faster (see documentation)
-    file(pvar) from Channel.fromPath(params.test_variants_file.replaceAll('.pgen$', '.pvar'))
-    file(psam) from Channel.fromPath(params.test_variants_file.replaceAll('.pgen$', '.psam'))
+    file(pvar) from Channel.fromPath(params.test_variants_file.replaceAll('.pgen$', '.pvar')).collect()
+    file(psam) from Channel.fromPath(params.test_variants_file.replaceAll('.pgen$', '.psam')).collect()
   file(covar_file) from Channel.fromPath(params.covar_file)
 
   output:       
