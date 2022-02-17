@@ -37,7 +37,7 @@ process step1_l0_bgen {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk) from chunks_phenotypes.map { f -> [f.getBaseName().split('_')[1], f] } 
   each file(bgen_file) from Channel.fromPath(params.CommonVar_file)
-  file(covar_file) from Channel.fromPath(params.covar_file)
+  each file(covar_file) from Channel.fromPath(params.covar_file)
 
 
   output:
@@ -70,8 +70,8 @@ process step_1_l1_bgen {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(snplist) from step1_l0_split
   each file(bgen_file) from Channel.fromPath(params.CommonVar_file)
-   file(sample_file) from Channel.fromPath(params.sample_file)
-  file(covar_file) from Channel.fromPath(params.covar_file)
+   each file(sample_file) from Channel.fromPath(params.sample_file)
+  each file(covar_file) from Channel.fromPath(params.covar_file)
 
 
   output:
@@ -106,8 +106,8 @@ process step_1_l2_bgen {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(predictions) from step_1_l1.groupTuple(by: 0).map{ t -> [t[0], t[1][0], t[2][0], t[3].flatten()] }
   each file(bgen_file) from Channel.fromPath(params.CommonVar_file)
-   file(sample_file) from Channel.fromPath(params.sample_file)
-  file(covar_file) from Channel.fromPath(params.covar_file)
+   each file(sample_file) from Channel.fromPath(params.sample_file)
+  each file(covar_file) from Channel.fromPath(params.covar_file)
 
 
   output:       
@@ -144,8 +144,8 @@ process step_2_bgen {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(loco_pred_list), file(loco_pred) from step1_l2
   each file(bgen_file) from Channel.fromPath(params.test_variants_file)
-   file(sample_file) from Channel.fromPath(params.sample_file_s2)
-  file(covar_file) from Channel.fromPath(params.covar_file)
+   each file(sample_file) from Channel.fromPath(params.sample_file_s2)
+  each file(covar_file) from Channel.fromPath(params.covar_file)
 
   output:       
   file "*.regenie.gz" into summary_stats
