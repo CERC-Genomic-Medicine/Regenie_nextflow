@@ -32,6 +32,11 @@ if there is no FID information use IIDx2 (and --double-id option in PGEN generat
 nextflow run $PATH/Regenie.nf -c $PATH/nextflow.config
 
 ```
+or if you want to use the pgen version (requieres pgen input files)
+```
+nextflow run $PATH/Regenie_vpgen.nf -c $PATH/nextflow.config
+
+```
 
 # Regenie_nextflow/Util
 useful pre-Regenie data handling  
