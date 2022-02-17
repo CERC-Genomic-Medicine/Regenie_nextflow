@@ -45,7 +45,7 @@ process filter_by_chrom {
   plink2 \
     --vcf common_snps.vcf.gz \
     --extract common_snps.prune.in \
-    --export vcf-4.2 bgz ref-first \
+    --export vcf-4.2 bgz ref-first ${params.Plink2_Options}\
     --out ${vcf.getBaseName()}.common_independent_snps
   
   # Create index. It will be used when concatinating.
