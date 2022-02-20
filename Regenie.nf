@@ -1,4 +1,3 @@
-
 process chunk_phenotype {
   label "chunk"
   executor "local"
@@ -29,8 +28,6 @@ process chunk_phenotype {
 }
 
 //____________________________________STEP 1 __________________________________________
-
-
 process step1_l0_pgen {
   label "STEP_1_0"
   cache "lenient"
@@ -38,9 +35,10 @@ process step1_l0_pgen {
   
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk) from chunks_phenotypes.map { f -> [f.getBaseName().split('_')[1], f] } 
-  each file(common) from Channel.fromPath(params.CommonVar_file)
-    each file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('pgen$', 'pvar'): params.CommonVar_file.replaceAll('.bgen$', '.sample')) //issue with BGI index cause error (unknown reason)
-    each file(sample_file) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('pgen$', 'psam'): params.CommonVar_file.replaceAll('.bgen$', '.sample'))
+  each file(common) from Channel.fromPath(params.CommonVar_file , checkIfExists: true)
+    each file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen', '.pvar'): params.CommonVar_file.replaceAll('.bgen$', '.sample'), checkIfExists: true) //issue with BGI index cause error (unknown reason)
+    each file(sample_file) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen', '.psam'): params.CommonVar_file.replaceAll('.bgen$', '.sample'), checkIfExists: true)
+
 
 
 
@@ -49,13 +47,11 @@ process step1_l0_pgen {
   file "*.log" into step1_l0_logs
 
   publishDir "${params.OutDir}/step1_l0_logs", pattern: "*.log", mode: "copy"
- 
-when:
- common.getExtension() == "pgen"
 
-script :
   """
-      name=${common.baseName}
+if test "${params.CommonVar_file[-4..-1]}"="pgen"
+then
+  name=${common.baseName}
   regenie \
     --step 1 \
     --loocv \
@@ -67,13 +63,7 @@ script :
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
     --force-step1 ${params.options_s1}
-  """
-  
-when:
- common.getExtension() == "bgen"
-
-script :
-  """
+else
   regenie \
     --step 1 \
     --loocv \
@@ -86,6 +76,7 @@ script :
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
     --force-step1 ${params.options_s1}
+fi
   """
 }
 
@@ -101,7 +92,7 @@ process step_1_l1_pgen {
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(snplist) from step1_l0_split
   each file(common) from Channel.fromPath(params.CommonVar_file)
     each file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen$', '.pvar'): params.CommonVar_file.replaceAll('.bgen$', '.sample')) //issue with BGI index cause error (unknown reason)
-    each file(sample_file) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen$', '.pvar'): params.CommonVar_file.replaceAll('.bgen$', '.sample'))
+    each file(sample_file) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen$', '.psam'): params.CommonVar_file.replaceAll('.bgen$', '.sample'))
 
 
 
@@ -111,9 +102,9 @@ process step_1_l1_pgen {
  
   publishDir "${params.OutDir}/step1_l1_logs", pattern: "*.log", mode: "copy"
 
-when:
- common.getExtension()== "pgen"
   """
+if test "${params.CommonVar_file[-4..-1]}"="pgen"
+then
       name=${common.baseName}
   i=${snplist.getSimpleName().split('_')[2].replaceFirst('^job', '')}
   regenie \
@@ -125,13 +116,8 @@ when:
     --pgen \$name \
     --out fit_bin_${pheno_chunk_no}_\${i} \
     --run-l0 ${master},\${i} \
-    --threads ${params.Threads_S_11} ${params.options_s1}
-  """
-when:
- common.getExtension() == "bgen"
-
-script :
-  """
+    --threads ${params.Threads_S_11} ${params.options_s1} 
+else
   i=${snplist.getSimpleName().split('_')[2].replaceFirst('^job', '')}
   regenie \
     --step 1 \
@@ -143,7 +129,8 @@ script :
     --bgen ${common} \
     --out fit_bin_${pheno_chunk_no}_\${i} \
     --run-l0 ${master},\${i} \
-    --threads ${params.Threads_S_11} ${params.options_s1}
+    --threads ${params.Threads_S_11} ${params.options_s1} 
+fi
   """
 }
 
@@ -159,7 +146,7 @@ process step_1_l2_pgen {
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(predictions) from step_1_l1.groupTuple(by: 0).map{ t -> [t[0], t[1][0], t[2][0], t[3].flatten()] }
   each file(common) from Channel.fromPath(params.CommonVar_file)
     each file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen$', '.pvar'): params.CommonVar_file + ".bgi") 
-    each file(sample_file) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen$', '.pvar'): params.CommonVar_file.replaceAll('.bgen$', '.sample'))
+    each file(sample_file) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen$', '.psam'): params.CommonVar_file.replaceAll('.bgen$', '.sample'))
 
   
 
@@ -170,11 +157,9 @@ process step_1_l2_pgen {
 
   publishDir "${params.OutDir}/step1_l2_logs", pattern: "*.log", mode: "copy"
   
-when:
- common.getExtension() == "pgen"
- 
-script:
   """
+if test "${params.CommonVar_file[-4..-1]}"="pgen"
+then
     name=${common.baseName}
   regenie \
     --step 1 \
@@ -188,12 +173,7 @@ script:
     --threads ${params.Threads_S_12} \
     --use-relative-path \
     --force-step1 ${params.options_s1}
-  """
-when:
- common.getExtension() == "bgen"
-
-script :
-  """
+else
     regenie \
     --step 1 \
     --phenoFile ${pheno_chunk} \
@@ -207,6 +187,7 @@ script :
     --threads ${params.Threads_S_12} \
     --use-relative-path \
     --force-step1 ${params.options_s1}
+
   """
   }
 
@@ -220,7 +201,7 @@ process step_2_pgen {
   tuple val(pheno_chunk_no), file(pheno_chunk), file(loco_pred_list), file(loco_pred) from step1_l2
   each file(common) from Channel.fromPath(params.test_variants_file)
     each file(pvar) from Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen$', '.pvar'): params.test_variants_file + ".bgi")
-    each file(sample_file) from Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen$', '.pvar'): params.test_variants_file.replaceAll('.bgen$', '.sample'))
+    each file(sample_file) from Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen$', '.psam'): params.test_variants_file.replaceAll('.bgen$', '.sample'))
     each file(covar_file) from Channel.fromPath(params.covar_file)
 
   output:       
@@ -230,11 +211,9 @@ process step_2_pgen {
   publishDir "${params.OutDir}/step2_logs", pattern: "*.log", mode: "copy"
   publishDir "${params.OutDir}/summary_stats", pattern: "*.regenie.gz", mode: "copy"
 
-when:
- common.getExtension() == "pgen"
-
-script :
   """
+if test "${params.CommonVar_file[-4..-1]}"="pgen"
+then
   name=${common.baseName}
   regenie \
     --step 2 \
@@ -246,12 +225,7 @@ script :
     --pred ${loco_pred_list} \
     --gz \
     --threads ${params.Threads_S_2} ${params.options_s2}
-  """
-when:
- common.getExtension() == "bgen"
-
-script :  
-  """
+else
   name=${common.getName().replaceAll('.bgen$', '')}
   regenie \
     --step 2 \
@@ -264,5 +238,6 @@ script :
     --pred ${loco_pred_list} \
     --gz \
     --threads ${params.Threads_S_2} ${params.options_s2}
+fi
   """
 }
