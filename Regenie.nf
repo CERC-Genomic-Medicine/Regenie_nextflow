@@ -210,7 +210,7 @@ process step_2_split {
   scratch false 
 
 gen=Channel.fromPath(params.test_variants_file).map { file -> tuple(file.baseName, file) }
-var=Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen', '.pvar'):params.test_variants_file +'bgi').map { file -> tuple(file.baseName, file) }
+var=Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen', '.pvar'):params.test_variants_file +'.bgi').map { file -> file.baseName[-4..-1]=="pgen" ? tuple(file.baseName, file) : tuple(file.baseName[0..-6], file) }
 sam=Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen', '.psam'): params.test_variants_file.replaceAll('.bgen$', '.sample')).map { file -> tuple(file.baseName, file) }
 
   input:
