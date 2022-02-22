@@ -209,19 +209,19 @@ process step_2_split {
   cache "lenient"
   scratch false 
 
-  
+gen=Channel.fromPath(params.test_variants_file).map { file -> tuple(file.baseName, file) }
+var=Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen', '.pvar'):params.test_variants_file +'bgi').map { file -> tuple(file.baseName, file) }
+sam=Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen', '.psam'): params.test_variants_file.replaceAll('.bgen$', '.sample')).map { file -> tuple(file.baseName, file) }
+
   input:
   
-file common from Channel.fromPath(params.test_variants_file)
-file pvar from Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen$', '.pvar'): params.test_variants_file + ".bgi").collect()
-file sample_file from Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen$', '.psam'): params.test_variants_file.replaceAll('.bgen$', '.sample')).collect()
-
+tuple val(names), file(common), file(pvar), file(sample_file) from gen.concat(var,sam).groupTuple().map { t -> [t[0], t[1][0],  t[1][1], t[1][2]]}
 
 
   output:
- file(params.test_variants_file[-4..-1]=="pgen" ? "*.pgen":"*.bgen") into sub_gen mode flatten
-  file(params.test_variants_file[-4..-1]=="pgen" ? "*.psam":"*.sample") into sub_fam mode flatten
-  file(params.test_variants_file[-4..-1]=="pgen" ? "*.pvar":"*.bgi") into sub_var mode flatten
+ file(params.test_variants_file[-4..-1]=="pgen" ? "*.pgen":"*.bgen") into split_gen
+ file(params.test_variants_file[-4..-1]=="pgen" ? "*.psam":"*.sample") into split_sam
+ file(params.test_variants_file[-4..-1]=="pgen" ? "*.pvar":"*.bgi") into split_var
 
 script :
 if (params.test_variants_file[-4..-1]=="pgen")
@@ -265,11 +265,12 @@ process step_2 {
   cache "lenient"
   scratch false 
 
+gen=split_gen.map { file -> tuple(file.baseName, file) }
+var=split_var.map { file -> tuple(file.baseName, file) }
+sam=split_sam.map { file -> tuple(file.baseName, file) }
+
   input:
-  tuple val(pheno_chunk_no), file(pheno_chunk), file(loco_pred_list), file(loco_pred) from step1_l2
-  each file(common) from sub_gen
-    each file(pvar) from sub_var
-    each file(sample_file) from sub_fam
+  tuple val(pheno_chunk_no), file(pheno_chunk), file(loco_pred_list), file(loco_pred), val(names), file(common), file(pvar), file(sample_file) from step1_l2.combine(gen.concat(var,sam).groupTuple().map { t -> [t[0], t[1][0],  t[1][1], t[1][2]]})
 
   output:       
   file("*.regenie") into summary_stats
