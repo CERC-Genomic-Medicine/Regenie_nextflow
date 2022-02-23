@@ -317,7 +317,7 @@ process step_2_merge {
 
 
   """
-  Q=\$(find . -name "*.txt" | sort -V)
+  Q=\$(find . -name "*.regenie" | sort -V)
  cat \$Q > assoc_${pheno_no}.regenie
 gzip assoc_${pheno_no}.regenie
   """
