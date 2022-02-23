@@ -52,7 +52,7 @@ process step1_l0 {
   publishDir "${params.OutDir}/step1_l0_logs", pattern: "*.log", mode: "copy"
 
 script :
-if (params.test_variants_file[-4..-1]=="pgen")
+if (params.CommonVar_file[-4..-1]=="pgen")
   """
   name=${common.baseName}
   regenie \
@@ -108,7 +108,7 @@ process step_1_l1 {
   publishDir "${params.OutDir}/step1_l1_logs", pattern: "*.log", mode: "copy"
 
 script :
-if (params.test_variants_file[-4..-1]=="pgen")
+if (params.CommonVar_file[-4..-1]=="pgen")
   """
       name=${common.baseName}
   i=${snplist.getSimpleName().split('_')[2].replaceFirst('^job', '')}
@@ -165,7 +165,7 @@ process step_1_l2 {
   publishDir "${params.OutDir}/step1_l2_logs", pattern: "*.log", mode: "copy"
   
 script :
-if (params.test_variants_file[-4..-1]=="pgen")
+if (params.CommonVar_file[-4..-1]=="pgen")
   """
     name=${common.baseName}
   regenie \
@@ -205,12 +205,13 @@ else
 // ________________STEP 2 SPLIT ___________________________
 
 process step_2_split {
-  label "STEP_2_split"
+  label "STEP_2_spit"
   cache "lenient"
   scratch false 
-
+  executor "local"
+  
 gen=Channel.fromPath(params.test_variants_file).map { file -> tuple(file.baseName, file) }
-var=Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen', '.pvar'):params.test_variants_file +'.bgi').map { file -> file.baseName[-4..-1]=="pgen" ? tuple(file.baseName, file) : tuple(file.baseName[0..-6], file) }
+var=Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen', '.pvar'):params.test_variants_file +'.bgi').map { file -> file.extension=="pvar" ? tuple(file.baseName, file) : tuple(file.baseName[0..-6], file) }
 sam=Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen', '.psam'): params.test_variants_file.replaceAll('.bgen$', '.sample')).map { file -> tuple(file.baseName, file) }
 
   input:
@@ -219,9 +220,9 @@ tuple val(names), file(common), file(pvar), file(sample_file) from gen.concat(va
 
 
   output:
- file(params.test_variants_file[-4..-1]=="pgen" ? "*.pgen":"*.bgen") into split_gen
- file(params.test_variants_file[-4..-1]=="pgen" ? "*.psam":"*.sample") into split_sam
- file(params.test_variants_file[-4..-1]=="pgen" ? "*.pvar":"*.bgi") into split_var
+ file(params.test_variants_file[-4..-1]=="pgen" ? "${common.baseName}.subsetted_*.pgen":"${common.baseName}.subsetted_*.bgen") into split_gen
+ file(params.test_variants_file[-4..-1]=="pgen" ? "${common.baseName}.subsetted_*.psam":"${common.baseName}.subsetted_*.sample") into split_sam
+ file(params.test_variants_file[-4..-1]=="pgen" ? "${common.baseName}.subsetted_*.pvar":"${common.baseName}.subsetted_*.bgi") into split_var
 
 script :
 if (params.test_variants_file[-4..-1]=="pgen")
@@ -230,14 +231,14 @@ grep -v "^#" ${common.baseName}.pvar | cut -f 3 > SNP_temp.txt
 nb_snp=\$(cat SNP_temp.txt | wc -l )
 val=\$((\$nb_snp/${params.SnpStep}))
 if [[ \$val > 1 ]]; then
-then
 split --numeric-suffixes -l  ${params.SnpStep} SNP_temp.txt split
 for i in split*
 do
 plink2 --pfile ${common.baseName} --extract \$i --make-pgen --out ${common.baseName}.subsetted_\$i
 done
 else
-cp ${common} unsubsetted.pgen ; cp ${common.baseName}.pvar unsubsetted.pvar ; cp ${common.baseName}.psam unsubsetted.psam
+cp ${common} ${common.baseName}.subsetted_00.pgen ; cp ${common.baseName}.pvar ${common.baseName}.subsetted_00.pvar ; cp ${common.baseName}.psam ${common.baseName}.subsetted_00.psam
+fi
   """
 else
   """
@@ -252,7 +253,7 @@ if [[ \$val > 1 ]]; then
       bgenix -index -g ${common.baseName}.subsetted_\$i.bgen
       done
 else
-  cp ${common} unsubsetted.bgen ; cp ${common}.bgi unsubsetted.bgen.bgi ; cp ${common.name}.sample unsubsetted.sample
+  cp ${common} ${common.baseName}.subsetted_00.bgen ; cp ${common}.bgi ${common.baseName}.subsetted_00.bgen.bgi ; cp ${common.name}.sample ${common.baseName}.subsetted_00.sample
 fi
   """
 }
@@ -275,7 +276,6 @@ sam=split_sam.map { file -> tuple(file.baseName, file) }
   output:       
   file("*.regenie") into summary_stats
   file "*.log" into step2_logs
-  val(pheno_chunk_no) into iter_pheno
 
   publishDir "${params.OutDir}/step2_logs", pattern: "*.log", mode: "copy"
 
@@ -289,8 +289,7 @@ if (params.test_variants_file[-4..-1]=="pgen")
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
     --pgen \$name \
-    --out "\$name"_assoc_${pheno_chunk_no} \
-    --covarFile ${covar_file} \
+    --out "\$name"_${pheno_chunk_no}_assoc_ \
     --pred ${loco_pred_list} \
     --threads ${params.Threads_S_2} ${params.options_s2}
   """
@@ -300,24 +299,27 @@ if (params.test_variants_file[-4..-1]=="pgen")
   regenie \
     --step 2 \
     --phenoFile ${pheno_chunk} \
-    --covarFile ${covar_file} \
     --sample ${sample_file} \
     --bsize ${params.Bsize} \
     --bgen ${common} \
-    --out "\$name"_assoc_${pheno_chunk_no} \
+    --out "\$name"_${pheno_chunk_no}_assoc_ \
     --pred ${loco_pred_list} \
     --threads ${params.Threads_S_2} ${params.options_s2}
   """
 }
 
+
+
+//______________________MERGE______________________
 process step_2_merge {
   label "STEP_2"
   cache "lenient"
   scratch false 
 
+
+
   input:
-  val(pheno_chunk_no) from iter_pheno.unique()
-  each file(sum) from summary_stats.collect()
+  tuple val(pheno_chunk_no), file(summary) from summary_stats.map{ t -> [t.baseName.split("assoc_")[1], t] }.groupTuple()
 
   output:       
   file "*.regenie.gz" into summary_stats_final
@@ -327,7 +329,7 @@ process step_2_merge {
 
 
   """
-cat *_assoc_${pheno_chunk_no}.regenie > assoc_${pheno_chunk_no}.regenie
+cat ${summary} > assoc_${pheno_chunk_no}.regenie
 gzip assoc_${pheno_chunk_no}.regenie
   """
 }
