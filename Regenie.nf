@@ -319,7 +319,7 @@ process step_2_merge {
 
 
   input:
-  tuple val(pheno_chunk_no), file(summary) from summary_stats.map{ t -> [t.baseName.split("assoc_")[1], t] }.groupTuple()
+  tuple val(pheno_no), file(summary) from summary_stats.map{ t -> [t.baseName.split("assoc_")[1], t] }.groupTuple()
 
   output:       
   file "*.regenie.gz" into summary_stats_final
@@ -330,7 +330,7 @@ process step_2_merge {
 
   """
   Q=\$(find . -name "*.txt" | sort -V)
- cat \$Q > assoc_${pheno_chunk_no}.regenie
-gzip assoc_${pheno_chunk_no}.regenie
+ cat \$Q > assoc_${pheno_no}.regenie
+gzip assoc_${pheno_no}.regenie
   """
 }
