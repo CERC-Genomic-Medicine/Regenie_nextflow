@@ -1,5 +1,3 @@
-// Alternate option see with reviewer, faster but cannot use extract option for regenie step2 (however can add an option toBeExtracted file in params)
-
 
 process chunk_phenotype {
   label "chunk"
@@ -40,9 +38,7 @@ process step1_l0 {
 
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk) from chunks_phenotypes.map { f -> [f.getBaseName().split('_')[1], f] } 
-  each file(common) from Channel.fromPath(params.CommonVar_file)
-    each file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen', '.pvar'): "Null") //issue with BGI index cause error (unknown reason)
-    each file(sample_file) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen', '.psam'): params.CommonVar_file.replaceAll('.bgen$', '.sample'))
+tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? [params.CommonVar_file, params.CommonVar_file.replaceAll('.pgen', '.pvar'), params.CommonVar_file.replaceAll('.pgen', '.psam')] [params.CommonVar_file,"NULL",params.CommonVar_file.replaceAll('.bgen$', '.sample')]).toSortedList().flatten()
 
 
 
@@ -97,9 +93,7 @@ process step_1_l1 {
 
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(snplist) from step1_l0_split
-  each file(common) from Channel.fromPath(params.CommonVar_file)
-    each file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen$', '.pvar'): params.CommonVar_file + ".bgi") 
-    each file(sample_file) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen$', '.psam'): params.CommonVar_file.replaceAll('.bgen$', '.sample'))
+tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? [params.CommonVar_file, params.CommonVar_file.replaceAll('.pgen', '.pvar'), params.CommonVar_file.replaceAll('.pgen', '.psam')] [params.CommonVar_file,params.CommonVar_file + ".bgi",params.CommonVar_file.replaceAll('.bgen$', '.sample')]).toSortedList().flatten()
 
 
 
@@ -153,9 +147,7 @@ process step_1_l2 {
 
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(predictions) from step_1_l1.groupTuple(by: 0).map{ t -> [t[0], t[1][0], t[2][0], t[3].flatten()] }
-  each file(common) from Channel.fromPath(params.CommonVar_file)
-    each file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen$', '.pvar'): params.CommonVar_file + ".bgi") 
-    each file(sample_file) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? params.CommonVar_file.replaceAll('.pgen$', '.psam'): params.CommonVar_file.replaceAll('.bgen$', '.sample'))
+tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? [params.CommonVar_file, params.CommonVar_file.replaceAll('.pgen', '.pvar'), params.CommonVar_file.replaceAll('.pgen', '.psam')] [params.CommonVar_file,params.CommonVar_file + ".bgi",params.CommonVar_file.replaceAll('.bgen$', '.sample')]).toSortedList().flatten()
 
   
 
@@ -203,7 +195,7 @@ else
   }
 
 // _________________________________________STEP2_________________________________________
-
+      
 // ________________STEP 2 SPLIT ___________________________
 
 process step_2_split {
@@ -215,13 +207,10 @@ process step_2_split {
 
 Extracted =Channel.fromPath(params.toBeExtracted)
 
-gen=Channel.fromPath(params.test_variants_file).map { file -> tuple(file.baseName, file) }
-var=Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen', '.pvar'):params.test_variants_file +'.bgi').map { file -> file.extension=="pvar" ? tuple(file.baseName, file) : tuple(file.baseName[0..-6], file) }
-sam=Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? params.test_variants_file.replaceAll('.pgen', '.psam'): params.test_variants_file.replaceAll('.bgen$', '.sample')).map { file -> tuple(file.baseName, file) }
 
   input:
   
-tuple val(names), file(common), file(pvar), file(sample_file) from gen.concat(var,sam).groupTuple().map { t -> [t[0], t[1][0],  t[1][1], t[1][2]]}
+tuple val(names), file(common), file(sample_file), file(pvar) from Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? [params.test_variants_file, params.test_variants_file.replaceAll('.pgen', '.pvar'), params.test_variants_file.replaceAll('.pgen', '.psam')]:[params.test_variants_file, params.test_variants_file+ ".bgi", params.test_variants_file.replaceAll('.bgen$', '.sample')]).toSortedList().flatten().collate(3).view()
 
 
   output:
@@ -309,7 +298,7 @@ process step_2_merge {
 
 
   input:
-  tuple val(pheno_no), file(summary) from summary_stats.map{ t -> [t.baseName.split("assoc_")[1], t] }.groupTuple()
+  tuple val(pheno_chunk_no), file(summary) from summary_stats.map{ t -> [t.baseName.split("assoc_")[1], t] }.groupTuple()
 
   output:       
   file "*.regenie.gz" into summary_stats_final
@@ -320,8 +309,8 @@ process step_2_merge {
 
   """
   Q=\$(find . -name "*.txt" | sort -V)
- cat \$Q > assoc_${pheno_no}.regenie
-gzip assoc_${pheno_no}.regenie
+ cat \$Q > assoc_${pheno_chunk_no}.regenie
+gzip assoc_${pheno_chunk_no}.regenie
   """
 }
 
