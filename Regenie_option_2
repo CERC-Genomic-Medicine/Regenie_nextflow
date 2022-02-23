@@ -319,7 +319,8 @@ process step_2_merge {
 
 
   """
-cat ${summary} > assoc_${pheno_chunk_no}.regenie
+  Q=\$(find . -name "*.txt" | sort -V)
+ cat \$Q > assoc_${pheno_chunk_no}.regenie
 gzip assoc_${pheno_chunk_no}.regenie
   """
 }
