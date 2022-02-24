@@ -56,6 +56,6 @@ nextflow run $PATH/[script].nf -c $PATH/[config].config
 
 # Necessary software and their installation
 
-BGEN most recent version available @ https://enkre.net/cgi-bin/code/bgen/dir?ci=tip
+BGEN most recent version available @ https://enkre.net/cgi-bin/code/bgen/dir?ci=tip (module load nixpkgs/16.09 gcc/5.4.0 bgen/1.1.4)
 Plink2 avaullable @ https://github.com/chrchang/plink-ng
 QCTOOL 
