@@ -39,7 +39,7 @@ process step1_l0 {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk) from chunks_phenotypes.map { f -> [f.getBaseName().split('_')[1], f] } 
 tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? [params.CommonVar_file, params.CommonVar_file.replaceAll('.pgen', '.pvar'), params.CommonVar_file.replaceAll('.pgen', '.psam')] :[params.CommonVar_file,"NULL",params.CommonVar_file.replaceAll('.bgen$', '.sample')]).toSortedList()
-
+  each file(covar_file) from Channel.fromPath(params.covar_file)
 
 
 
@@ -61,6 +61,7 @@ if (params.CommonVar_file[-4..-1]=="pgen")
     --gz \
     --pgen \$name \
     --out fit_bin_${pheno_chunk_no} \
+    --covarFile ${covar_file} \
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
     --force-step1 ${params.options_s1}
@@ -75,6 +76,7 @@ if (params.CommonVar_file[-4..-1]=="pgen")
     --gz \
     --bgen ${common} \
     --sample ${sample_file} \
+    --covarFile ${covar_file} \
     --out fit_bin_${pheno_chunk_no} \
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
@@ -94,7 +96,7 @@ process step_1_l1 {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(snplist) from step1_l0_split
 tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? [params.CommonVar_file, params.CommonVar_file.replaceAll('.pgen', '.pvar'), params.CommonVar_file.replaceAll('.pgen', '.psam')]: [params.CommonVar_file,params.CommonVar_file + ".bgi",params.CommonVar_file.replaceAll('.bgen$', '.sample')]).toSortedList()
-
+  each file(covar_file) from Channel.fromPath(params.covar_file)
 
 
   output:
@@ -114,6 +116,7 @@ if (params.CommonVar_file[-4..-1]=="pgen")
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
     --gz \
+     --covarFile ${covar_file} \
     --pgen \$name \
     --out fit_bin_${pheno_chunk_no}_\${i} \
     --run-l0 ${master},\${i} \
@@ -129,6 +132,7 @@ if (params.CommonVar_file[-4..-1]=="pgen")
     --bsize ${params.Bsize} \
     --sample ${sample_file} \
     --gz \
+    --covarFile ${covar_file} \
     --bgen ${common} \
     --out fit_bin_${pheno_chunk_no}_\${i} \
     --run-l0 ${master},\${i} \
@@ -148,7 +152,7 @@ process step_1_l2 {
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(predictions) from step_1_l1.groupTuple(by: 0).map{ t -> [t[0], t[1][0], t[2][0], t[3].flatten()] }
 tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? [params.CommonVar_file, params.CommonVar_file.replaceAll('.pgen', '.pvar'), params.CommonVar_file.replaceAll('.pgen', '.psam')]: [params.CommonVar_file,params.CommonVar_file + ".bgi",params.CommonVar_file.replaceAll('.bgen$', '.sample')]).toSortedList()
-
+  each file(covar_file) from Channel.fromPath(params.covar_file)
   
 
 
@@ -170,6 +174,7 @@ if (params.CommonVar_file[-4..-1]=="pgen")
     --pgen \$name \
     --out fit_bin${pheno_chunk_no}_loco \
     --run-l1 ${master} \
+    --covarFile ${covar_file} \
     --keep-l0 \
     --threads ${params.Threads_S_12} \
     --use-relative-path \
@@ -182,6 +187,7 @@ else
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
     --sample ${sample_file} \
+    --covarFile ${covar_file} \
     --gz \
     --bgen ${common} \
     --out fit_bin${pheno_chunk_no}_loco \
@@ -260,7 +266,8 @@ process step_2 {
 
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(loco_pred_list), file(loco_pred), file(common), file(pvar), file(sample_file) from step1_l2.combine(split)
-
+  each file(covar_file) from Channel.fromPath(params.covar_file)
+  
   output:       
   file("*.regenie") into summary_stats
   file "*.log" into step2_logs
@@ -279,6 +286,7 @@ if (params.test_variants_file[-4..-1]=="pgen")
     --pgen \$name \
     --out "\$name"_${pheno_chunk_no}_assoc_ \
     --pred ${loco_pred_list} \
+     --covarFile ${covar_file} \
     --threads ${params.Threads_S_2} ${params.options_s2}
   """
   else
@@ -288,6 +296,7 @@ if (params.test_variants_file[-4..-1]=="pgen")
     --step 2 \
     --phenoFile ${pheno_chunk} \
     --sample ${sample_file} \
+    --covarFile ${covar_file} \
     --bsize ${params.Bsize} \
     --bgen ${common} \
     --out "\$name"_${pheno_chunk_no}_assoc_ \
