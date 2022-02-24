@@ -23,7 +23,7 @@ process filter_by_chrom {
       --max-alleles 2 \
       --snps-only \
       --set-all-var-ids '@_#_\$r_\$a' \
-      --exclude ${workflow.scriptFile.getParent()}/${params.bed}
+      --exclude ${workflow.scriptFile.getParent()}/${params.bed} \
       --indep-pairwise 1000 100 0.9 \
       --export vcf-4.2 bgz ref-first \
       --out common_snps
@@ -38,7 +38,7 @@ process filter_by_chrom {
       --max-alleles 2 \
       --snps-only \
       --set-all-var-ids '@_#_\$r_\$a' \
-      --exclude ${workflow.scriptFile.getParent()}/${params.bed}
+      --exclude ${workflow.scriptFile.getParent()}/${params.bed} \
       --indep-pairwise 1000 100 0.9 \
       --export vcf-4.2 bgz ref-first \
       --out common_snps
