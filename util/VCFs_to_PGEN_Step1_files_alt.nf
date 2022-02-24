@@ -25,6 +25,7 @@ process filter_by_chrom {
       --set-all-var-ids '@_#_\$r_\$a' \
       --indep-pairwise 1000 100 0.9 \
       --export vcf-4.2 bgz ref-first \
+      --exclude ${workflow.scriptFile.getParent()}/${params.bed} \
       --out common_snps
 
   else
@@ -35,6 +36,7 @@ process filter_by_chrom {
       --hwe ${params.HWE} \
       --min-alleles 2 \
       --max-alleles 2 \
+      --exclude ${workflow.scriptFile.getParent()}/${params.bed} \
       --snps-only \
       --set-all-var-ids '@_#_\$r_\$a' \
       --indep-pairwise 1000 100 0.9 \
