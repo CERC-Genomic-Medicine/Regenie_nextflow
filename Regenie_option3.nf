@@ -234,7 +234,7 @@ grep -v "^#" ${common.baseName}.pvar | cut -f 3 > SNP_temp.txt
   if [[ ${params.Extraction_file}=="Null" ]]; then
 split --numeric-suffixes -l  ${params.SnpStep} SNP_temp.txt split
 else
-  grep -f Extraction SNP_temp.txt > SNP.extracted.txt
+  grep -f ${Extraction} SNP_temp.txt > SNP.extracted.txt
   split --numeric-suffixes -l  ${params.SnpStep} SNP_temp.txt split
 fi
   """
@@ -244,7 +244,7 @@ bgenix -list -g ${common} |cut -f 1 | sed '/^#/d' | sed '1d' > SNP_temp.txt
   if [[ ${params.Extraction_file}=="Null" ]]; then
 split --numeric-suffixes -l  ${params.SnpStep} SNP_temp.txt split
 else
-  grep -f Extraction SNP_temp.txt > SNP.extracted.txt
+  grep -f ${Extraction} SNP_temp.txt > SNP.extracted.txt
   split --numeric-suffixes -l  ${params.SnpStep} SNP_temp.txt split
 fi
 
