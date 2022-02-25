@@ -21,9 +21,9 @@ process Plinked {
   if [ ${vcf.getExtension()} = "bcf"  ];then
     name=${vcf.getName().replaceAll('.bcf$', '')}
    if [ ${params.dosageFD} = "none"  ];then
-    plink2 --bcf ${vcf}  --max-alleles 2  --new-id-max-allele-len 1000 --set-all-var-ids '@_#_\$r_\$a' --make-pgen 'erase-phase' ${params.Plink2_Options} --out \$name
+    plink2 --bcf ${vcf}  --max-alleles 2 --exclude ${workflow.scriptFile.getParent()}/${params.bed}  --new-id-max-allele-len 1000 --set-all-var-ids '@_#_\$r_\$a' --make-pgen 'erase-phase' ${params.Plink2_Options} --out \$name
    else
-    plink2 --bcf ${vcf}  'dosage=${params.dosageFD}' --new-id-max-allele-len 1000  --max-alleles 2 --set-all-var-ids '@_#_\$r_\$a' ${params.Plink2_Options} --make-pgen 'erase-phase' --out \$name
+    plink2 --bcf ${vcf}  'dosage=${params.dosageFD}' --exclude ${workflow.scriptFile.getParent()}/${params.bed} --new-id-max-allele-len 1000  --max-alleles 2 --set-all-var-ids '@_#_\$r_\$a' ${params.Plink2_Options} --make-pgen 'erase-phase' --out \$name
    fi
   else
    if [ ${vcf.getExtension()} = "gz"  ];then
@@ -32,9 +32,9 @@ process Plinked {
     name=${vcf.getName().replaceAll('.vcf$', '')}  
    fi  
    if [ ${params.dosageFD} = "none"  ];then
-    plink2 --vcf ${vcf}  --max-alleles 2 --make-pgen 'erase-phase'  --set-all-var-ids '@_#_\$r_\$a' ${params.Plink2_Options} --new-id-max-allele-len 1000 --out \$name
+    plink2 --vcf ${vcf}  --max-alleles 2 --exclude ${workflow.scriptFile.getParent()}/${params.bed} --make-pgen 'erase-phase'  --set-all-var-ids '@_#_\$r_\$a' ${params.Plink2_Options} --new-id-max-allele-len 1000 --out \$name
    else
-    plink2 --vcf ${vcf}  'dosage=${params.dosageFD}' --new-id-max-allele-len 1000  --max-alleles 2 --set-all-var-ids '@_#_\$r_\$a' ${params.Plink2_Options} --make-pgen 'erase-phase' --out \$name
+    plink2 --vcf ${vcf}  'dosage=${params.dosageFD}' --exclude ${workflow.scriptFile.getParent()}/${params.bed}  --new-id-max-allele-len 1000  --max-alleles 2 --set-all-var-ids '@_#_\$r_\$a' ${params.Plink2_Options} --make-pgen 'erase-phase' --out \$name
    fi
   fi  
   """
