@@ -1,5 +1,5 @@
-//Description : parallel conversion and filtering of VCF file to BGEN file
-//Description : parallel conversion and filtering of VCF file to BGEN file
+//Description : parallel conversion and filtering of VCF file to PGEN file
+
 
 process Unizping {
 
