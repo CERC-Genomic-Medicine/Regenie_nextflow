@@ -322,8 +322,17 @@ process step_2_merge {
 
 
   """
-  Q=\$(find . -name "*.regenie" | sort -V)
- cat \$Q > assoc_${pheno_chunk_no}.regenie
+Q=\$(find . -name "*.regenie" | sort -V)
+first="true"
+for i in \$Q
+do
+        if [[ \${first} == "false" ]]; then
+                sed -i '1d' \$i
+        else
+                first="false"
+        fi
+done
+cat \$Q > assoc_${pheno_chunk_no}.regenie
 gzip assoc_${pheno_chunk_no}.regenie
 cat \$Q > assoc_${pheno_chunk_no}.regenie
   """
