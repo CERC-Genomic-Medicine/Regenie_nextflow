@@ -1,39 +1,39 @@
 #!/usr/bin/env python3
 
+import argparse
 import pandas as pd
-import sys
-from random import seed
-from random import gauss
-import sys, getopt
+import random
+
+parser = argparse.ArgumentParser(description='Create a Covariate or Phenotype file with random values')
+
+parser.add_argument('--ncol', dest='ncol', type=int, help='number of column expected in the outfile')
+
+parser.add_argument('--ID', dest='Input', type=str, help='file with individuals')
+
+parser.add_argument('--out', dest='output', type=str, help='output')
+
+parser.add_argument('--prefix', dest='pre', type=str, help='prefix to column')
+
+args = parser.parse_args()
 
 
-def main(argv):
-  inputfile = ''
-  outputfile = ''
-  ncolumn = ''
-  try:
-    opts, args = getopt.getopt(argv,"i:o:n",["ifile=","ofile=","nb_column="])
-  except getopt.GetoptError:
-    print('test.py -i <inputfile> -o <outputfile> -n <number_column> ')
-    sys.exit(2)
-  for opt, arg in opts:
-    if opt == '-h':
-      print('test.py -i <inputfile> -o <outputfile> -n <number_column>')
-      sys.exit()
-    elif opt in ("-i", "--ifile"):
-      inputfile = arg
-    elif opt in ("-o", "--ofile"):
-      outputfile = arg
-    elif opt in ("-n", "--nb_column"):
-      ncolumn = arg
-  input=pd.read_table(inputfile)
-  for x in range(2):
-    colname=x
-    rando=list()
-    for y in range(len(input)):
-      rando.append(gauss(0, 1))
-    input[colname] = rando
-  input.to_csv(outputfile, sep='\t')
+In=pd.read_table(args.Input)
 
-if __name__ == "__main__":
-   main(sys.argv[1:])
+
+out= list()
+header=["FID", "IID"]
+for y in range(0,args.ncol):
+	header.append(args.pre + str(y))
+for i in range(0,len(In.index)):
+    line = list()
+    for a in range(0,args.ncol):
+        rando=random.random()*5
+        line.append(rando)
+    out.append(line)
+df=pd.DataFrame(data=out)
+print(In.shape)
+print(In.shape)
+Q=pd.concat([In.iloc[: , :2], df], axis=1, ignore_index=True)
+Q.columns = header
+
+Q.to_csv(args.output, index=False, sep='\t',header=True)
