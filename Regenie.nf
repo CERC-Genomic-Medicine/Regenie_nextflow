@@ -312,7 +312,7 @@ process step_2_merge {
 
 
   input:
-  tuple val(pheno_chunk_no), file(summary) from summary_stats.map{ t -> [t.baseName.split("assoc_")[1], t] }.groupTuple()
+  tuple val(pheno_chunk_no), file(summary) from summary_stats.flatten().map{ t -> [t.baseName.split("assoc_")[1], t] }.groupTuple()
 
   output:       
   file "*.regenie.gz" into summary_stats_final
@@ -326,11 +326,12 @@ Q=\$(find . -name "*.regenie" | sort -V)
 first="true"
 for i in \$Q
 do
-        if [[ \${first} == "false" ]]; then
-                sed -i '1d' \$i
-        else
-                first="false"
-        fi
+do
+	if [[ \${first} == "false" ]]; then
+		sed -i '1d' \$i
+	else
+		first="false"
+	fi
 done
 cat \$Q > assoc_${pheno_chunk_no}.regenie
 gzip assoc_${pheno_chunk_no}.regenie
