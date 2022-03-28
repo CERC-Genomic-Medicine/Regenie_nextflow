@@ -1,6 +1,10 @@
-//Description : parallel conversion and filtering of VCF file to BGEN file
+// ______________________________________________Description : parallel conversion and filtering of VCF file to BGEN file
+//slower but produces BGENs which can have advantage
 
-process Unizping {
+process Unizping { 
+//Unzipping exclusions zones (i.e. low complexity regions)
+cache "lenient"
+scratch true
 
 input:
 file(exclude) from Channel.fromPath(params.bed)
@@ -17,8 +21,6 @@ fi
   """
 }
 
-//Description : From vcf files (with indexes) to a single bgen file with custom filter
-
 // Typicall VCF/BCF files are already split by chromosome. We make use of this, and process each of them in parallel.
 process filter_by_chrom {
   cache "lenient"
@@ -31,7 +33,8 @@ process filter_by_chrom {
   file "${vcf.getBaseName()}.common_independent_snps.vcf.*" into filtered_by_chrom mode flatten
 
   """
-  # Apply hard filters and identify independent SNPs
+  #### Apply hard filters and identify independent SNPs
+  #bcf vesion
   if [ ${vcf.getExtension()} = "bcf"  ];then
       plink2 \
       --bcf ${vcf} \
@@ -47,7 +50,7 @@ process filter_by_chrom {
       --export vcf-4.2 bgz ref-first \
       --out common_snps
 
-  else
+  else # VCF version
     plink2 \
       --vcf ${vcf} \
       --maf ${params.maf} \
@@ -62,7 +65,7 @@ process filter_by_chrom {
       --export vcf-4.2 bgz ref-first \
       --out common_snps
   fi
-  # Keep only independent SNPs in the final VCF
+  #### Keep only independent SNPs in the final VCF
   plink2 \
     --vcf common_snps.vcf.gz \
     --extract common_snps.prune.in \
@@ -93,11 +96,11 @@ process merge {
     publishDir "${params.OutDir}/BGEN", pattern: "*.bgi", mode: "copy"
  script :   
   """
-  find . -name "*.vcf.gz" | sort -V > files.txt
-  bcftools concat -n -f files.txt -Oz -o all.common_independent_snps.vcf.gz
+  find . -name "*.vcf.gz" | sort -V > files.txt                               #order files in natural order
+  bcftools concat -n -f files.txt -Oz -o all.common_independent_snps.vcf.gz   #concatenate filtered file
+  bcftools index -t all.common_independent_snps.vcf.gz                        
   gunzip -k all.common_independent_snps.vcf.gz
-  bcftools index -t all.common_independent_snps.vcf.gz
-  bash ${workflow.scriptFile.getParent()}/Scripts/dephasing.sh
+  bash ${workflow.scriptFile.getParent()}/Scripts/dephasing.sh -f all.common_independent_snps.vcf   #Script to dephase file
   qctool_v2.2.0 -g all.common_independent_snps.vcf -filetype vcf -bgen-bits 8 -og all.common_independent_snps.bgen -os all.common_independent_snps.sample
   bgenix -index -g all.common_independent_snps.bgen
  """
