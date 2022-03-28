@@ -23,7 +23,7 @@ module load singularity
 singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:VERSION.gz    
 tested with  singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:v3.0.gz  
 ```
-software needed : Nextflow, Singularity and plink (version > 2)
+software needed minimaly: Nextflow, Singularity and plink (version > 2)
 
 ## Step 1 Input file generation
 Minimaly Specify in util_standard_step1.config : 
