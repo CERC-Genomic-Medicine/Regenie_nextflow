@@ -1,7 +1,10 @@
-//Description : parallel conversion and filtering of VCF file to BGEN file
+//_____________________Description : parallel conversion and filtering of VCF file to BGEN file
 
-process Unizping {
-
+//unziping of exclusion region (ie low complexity region and or repeat sequence)
+process Unziping {
+  label "Unziping BED"
+  cache "lenient"
+  scratch true
 input:
 file(exclude) from Channel.fromPath(params.bed)
 
@@ -17,6 +20,7 @@ fi
   """
 }
 
+//Conversion of each VCF/BCF to BGEN 
 process Plinked {
   label "BGEN_generation"
   cache "lenient"
