@@ -6,8 +6,8 @@ Specify necessary parameter parameters in .config files
 
 ```
 cd [PATH]/util/
-nextflow run VCFs_to_PGEN_Step1.nf -c util_standard_step1.config # produce PGEN/PSAM/PVAR file for common SNPs
-nextflow run VCFs_to_PGEN_Step2.nf -c util_standard_step2.config # produce PGEN/PSAM/PVAR file for SNPs to be tested
+nextflow run Step1_convert_VCF.nf -c Step1_convert_VCF.config # produce PGEN/PSAM/PVAR file for common SNPs
+nextflow run Step2_convert_VCF.nf -c Step2_convert_VCF.config # produce PGEN/PSAM/PVAR file for SNPs to be tested
 cd ..
 nextflow run Regenie.nf -c Standard.config
 ```
@@ -15,33 +15,35 @@ nextflow run Regenie.nf -c Standard.config
 
 - Install this repository
 ```
-git clone https://github.com/CERC-Genomic-Medicine/Regenie_pipe.git 
+git clone https://github.com/CERC-Genomic-Medicine/Regenie_nextflow.git 
 ```
 - Install regenie image (if not already installed)  
 ```
 module load singularity    
 singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:VERSION.gz    
-tested with  singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:v2.2.4.gz  
+tested with  singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:v3.0.gz  
 ```
 software needed : Nextflow, Singularity and plink (version > 2)
 
 ## Step 1 Input file generation
 Minimaly Specify in util_standard_step1.config : 
-
- - Output Directory Path (OutDir)
+ - Output Format
+ - Output Directory
  - Complete Path to VCF/BCF (ex.[...]/* .vcf.gz ; with indexes in the same folder)
  - Bedfile of low complexity/repeat regions (instances can be fount in util file) 
-* Dosage field and filters can be specified
+ - Path to executable (plink2/qctool/bgenix)
 ** if there is no Family ID && using the PGEN version consider --double-id
 
 ## Step 2 Input file generation
 necessary tools plink version >2
 Minimaly Specify in util_standard_step2.config : 
 
- - Output Directory Path (OutDir)
- - Complete Path to VCF/BCF (ex.[...]/* .vcf.gz)
- - Bedfile of low complexity/repeat regions.  
-* Dosage field and filters can be specified
+ - Output Format
+ - Output Directory
+ - Complete Path to VCF/BCF (ex.[...]/* .vcf.gz ; with indexes in the same folder)
+ - Bedfile of low complexity/repeat regions (instances can be fount in util file) 
+ - Path to executable (plink2/qctool/bgenix)
+ - Dosage field 
 ** if there is no Family ID && using the PGEN version consider --double-id
 
 ## Regenie main implementation
@@ -62,11 +64,6 @@ if there is no FID information use IIDx2 (and --double-id option in PGEN generat
 
 
 # Advance implementations
-
-## BGEN alternative :  
-If desired, the BGEN alternate format is compatible with the main script and can be generate using :
-nextflow run VCFs_to_BGEN_Step1_files_alt.nf -c util_standard_step1.config 
-nextflow run VCFs_to_PGEN_Step2_files_alt.nf -c util_standard_step2.config
 
 ## Binary testing
 If desired, the options parameter within Standard.config can be modified to add Binary testing specification :
