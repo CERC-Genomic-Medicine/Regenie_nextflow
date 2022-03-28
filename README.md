@@ -6,8 +6,8 @@ Specify necessary parameter parameters in .config files
 
 ```
 cd [PATH]/util/
-nextflow run Step1_convert_VCF.nf -c Step1_convert_VCF.config # produce PGEN/PSAM/PVAR file for common SNPs
-nextflow run Step2_convert_VCF.nf -c Step2_convert_VCF.config # produce PGEN/PSAM/PVAR file for SNPs to be tested
+nextflow run Step1_convert_VCF.nf -c Step1_convert_VCF.config # produce file for common SNPs
+nextflow run Step2_convert_VCF.nf -c Step2_convert_VCF.config # produce file for SNPs to be tested
 cd ..
 nextflow run Regenie.nf -c Standard.config
 ```
