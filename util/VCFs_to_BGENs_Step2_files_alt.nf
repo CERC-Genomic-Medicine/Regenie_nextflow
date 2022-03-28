@@ -1,4 +1,6 @@
 //_____________________Description : parallel conversion and filtering of VCF file to BGEN file
+// Produce BGEN file which can yeild certain advantage
+
 
 //unziping of exclusion region (ie low complexity region and or repeat sequence)
 process Unziping {
