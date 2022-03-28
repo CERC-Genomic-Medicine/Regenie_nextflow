@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 
+#Create a Manhattan plot based on REGENIE outpu
+## Requieres bioinfokit pandas matplotlib and argparse
 
 
 from bioinfokit import analys, visuz
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import argparse
-import statsmodels.api as sm
-import pylab as py
 
 # load dataset as pandas dataframe
 parser = argparse.ArgumentParser(description='manhattan plot')
