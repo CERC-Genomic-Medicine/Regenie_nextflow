@@ -1,8 +1,13 @@
-//Description : parallel conversion and filtering of VCF file to PGEN file
+// -------------Description : parallel conversion and filtering of VCF file to PGEN file
+// Advantages : Faster
 
 
-process Unizping {
-
+//Unziping exclusion region file (i.e. repeat and/or low complexity regions)
+process Unziping {
+  label "Bed_Unziping"
+  cache "lenient"
+  scratch true
+  
 input:
 file(exclude) from Channel.fromPath(params.bed)
 
@@ -18,6 +23,7 @@ fi
   """
 }
 
+//Conversion and releveant filters
 process Plinked {
   label "PGEN_generation"
   cache "lenient"
