@@ -49,8 +49,8 @@ Minimaly Specify in util_standard_step2.config :
 ## Regenie main implementation
 Minimaly Specify in Standard.config : 
  - Output Directory Path (OutDir)
- - PGEN for Common variants (Step 1 input file generation)
- - PGEN for variants to be tested (Step 2 input file generation) 
+ - PGEN/BGEN for Common variants (Step 1 input file generation)
+ - PGEN/BGEN for variants to be tested (Step 2 input file generation) 
  - njob, PheStep, SnpStep (paralelisation options)
  - Path to Regenie Image ([...] / Regenie_v*.sif) 
  - Covariant and Phenotype files (see format below)
