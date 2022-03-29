@@ -26,7 +26,7 @@ tested with singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:v3.0.gz
 software needed minimally: Nextflow, Singularity and plink (version > 2)
 
 ## Step 1 Input file generation
-Minimally Specify in in Ste1_convert_VCF.config : 
+Minimally Specify in in Step1_convert_VCF.config : 
  - Output Format
  - Output Directory
  - Complete Path to VCF/BCF (ex.[...]/* .vcf.gz ; with indexes in the same folder)
