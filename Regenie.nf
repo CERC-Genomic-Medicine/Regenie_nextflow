@@ -218,7 +218,7 @@ process step_2_split {
 
   input:
   
-tuple file(common), file(input2), file(input3) from Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? [params.test_variants_file, params.test_variants_file.replaceAll('.pgen', '.pvar'), params.test_variants_file.replaceAll('.pgen', '.psam')]:[params.test_variants_file,params.test_variants_file.replaceAll('.bgen$', '.sample'), params.test_variants_file+ ".bgi"]).toSortedList().flatten().collate(3)
+tuple file(common), file(input2), file(input3) from Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? [params.test_variants_file, params.test_variants_file.replaceAll('.pgen$', '.pvar'), params.test_variants_file.replaceAll('.pgen$', '.psam')]:[params.test_variants_file,params.test_variants_file.replaceAll('.bgen$', '.sample'), params.test_variants_file+ ".bgi"]).toSortedList().flatten().collate(3)
 each file(Extraction) from Channel.fromPath(params.Extraction_file)
 //due to the structuring scheme the input order is different between bgen and pfile formats thus the input 2 and 3
 
