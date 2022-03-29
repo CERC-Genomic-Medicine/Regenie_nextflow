@@ -21,12 +21,12 @@ git clone https://github.com/CERC-Genomic-Medicine/Regenie_nextflow.git
 ```
 module load singularity    
 singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:VERSION.gz    
-tested with  singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:v3.0.gz  
+tested with singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:v3.0.gz  
 ```
-software needed minimaly: Nextflow, Singularity and plink (version > 2)
+software needed minimally: Nextflow, Singularity and plink (version > 2)
 
 ## Step 1 Input file generation
-Minimaly Specify in util_standard_step1.config : 
+Minimally Specify in in Ste1_convert_VCF.config : 
  - Output Format
  - Output Directory
  - Complete Path to VCF/BCF (ex.[...]/* .vcf.gz ; with indexes in the same folder)
@@ -36,7 +36,7 @@ Minimaly Specify in util_standard_step1.config :
 
 ## Step 2 Input file generation
 necessary tools plink version >2
-Minimaly Specify in util_standard_step2.config : 
+Minimally Specify in Step2_convert_VCF.config : 
 
  - Output Format
  - Output Directory
@@ -47,11 +47,11 @@ Minimaly Specify in util_standard_step2.config :
 ** if there is no Family ID && using the PGEN version consider --double-id
 
 ## Regenie main implementation
-Minimaly Specify in Standard.config : 
+Minimally Specify in Standard.config : 
  - Output Directory Path (OutDir)
  - PGEN/BGEN for Common variants (Step 1 input file generation)
  - PGEN/BGEN for variants to be tested (Step 2 input file generation) 
- - njob, PheStep, SnpStep (paralelisation options)
+ - njob, PheStep, SnpStep (parallelisation options)
  - Path to Regenie Image ([...] / Regenie_v*.sif) 
  - Covariant and Phenotype files (see format below)
 ```
@@ -66,17 +66,17 @@ if there is no FID information use IIDx2 (and --double-id option in PGEN generat
 # Advance implementations
 
 ## Binary testing
-If desired, the options parameter within Standard.config can be modified to add Binary testing specification :
+If desired, the options parameter within Standard.config can be modified to add Binary testing specification:
  - flag : bt
  - testing flag : --firth --firth-se etc.
 
 ## Further Regenie Parameters
-If desired, the options parameter within Standard.config can be modified to accomodate all Regenie options.
+If desired, the options parameter within Standard.config can be modified to accommodate all Regenie options.
 
-## Additionnal Scripts provided
+## Additional Scripts provided
 - util/Scripts/random_gen.py (Generate random covariate or phenotype)
 - Manhattan.py (provide cursory manhattan plot)
-* needs python packages : pandas, bioinfokit, matplotlib, argparse and random
+* needs python packages: pandas, bioinfokit, matplotlib, argparse and random
 
 # Necessary software and their installation
 
