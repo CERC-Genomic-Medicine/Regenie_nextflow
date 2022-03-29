@@ -21,7 +21,7 @@ git clone https://github.com/CERC-Genomic-Medicine/Regenie_nextflow.git
 ```
 module load singularity    
 singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:VERSION.gz    
-tested with singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:v3.0.gz  
+tested with singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:v3.0.1.gz  
 ```
 software needed minimally: Nextflow, Singularity and plink (version > 2)
 
