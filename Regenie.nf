@@ -326,7 +326,6 @@ Q=\$(find . -name "*.regenie" | sort -V)
 first="true"
 for i in \$Q
 do
-do
 	if [[ \${first} == "false" ]]; then
 		sed -i '1d' \$i
 	else
