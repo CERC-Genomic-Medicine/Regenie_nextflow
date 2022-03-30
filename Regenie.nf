@@ -1,9 +1,11 @@
-//Using a new parameter params.Extraction_file (which can be 'Null') we could give a substitute to the 'extract' option of Regenie which we use to speed up Step_2_split
+// TO DO : Burden/gene testing
 
 process chunk_phenotype {
   label "chunk"
   executor "local"
   cache "lenient"
+
+  // Aim :  Per phenotype block parallelisation
     
   input :
   file pheno_file from Channel.fromPath(params.pheno_file) // phenotype file will be staged (usually with hard-link) to the work directory
@@ -30,12 +32,13 @@ process chunk_phenotype {
 }
 
 
-//____________________________________STEP 1 __________________________________________
+//____________________________________STEP 1__________________________________________
 process step1_l0 {
   label "STEP_1_0"
   cache "lenient"
   scratch false
   
+  //Aim : Regenie parallelisation set-up
 
 
   input:
@@ -51,10 +54,16 @@ tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.C
 
   publishDir "${params.OutDir}/step1_l0_logs", pattern: "*.log", mode: "copy"
 
-script :
-if (params.CommonVar_file[-4..-1]=="pgen")
+
   """
-  name=${common.baseName}
+  if [ ${common.getExtension()} = "pgen" ]; then
+     name=${common.baseName}
+     input_format= "--pgen"
+  else
+     name=${common.name}
+     input_format= "--bgen"
+  fi
+
   regenie \
     --step 1 \
     --loocv \
@@ -62,28 +71,11 @@ if (params.CommonVar_file[-4..-1]=="pgen")
     --bsize ${params.Bsize} \
     --gz \
     --covarFile ${covar_file} \
-    --pgen \$name \
+    \$input_format \$name \
     --out fit_bin_${pheno_chunk_no} \
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
     --force-step1 ${params.options_s1}
-  """
-  else
-  """
-    regenie \
-    --step 1 \
-    --loocv \
-    --phenoFile ${pheno_chunk} \
-    --bsize ${params.Bsize} \
-    --gz \
-    --covarFile ${covar_file} \
-    --bgen ${common} \
-    --sample ${sample_file} \
-    --out fit_bin_${pheno_chunk_no} \
-    --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
-    --threads ${params.Threads_S_10} \
-    --force-step1 ${params.options_s1}
-
   """
 }
 
@@ -94,6 +86,8 @@ process step_1_l1 {
   label "STEP_1_1"
   cache "lenient"
   scratch false
+
+// Aim : Parallel Ridge Prediction
 
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(snplist) from step1_l0_split
@@ -107,56 +101,40 @@ tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.C
  
   publishDir "${params.OutDir}/step1_l1_logs", pattern: "*.log", mode: "copy"
 
-script :
-if (params.CommonVar_file[-4..-1]=="pgen")
   """
-      name=${common.baseName}
-  i=${snplist.getSimpleName().split('_')[2].replaceFirst('^job', '')}
-  regenie \
-    --step 1 \
-    --loocv \
-    --phenoFile ${pheno_chunk} \
-    --bsize ${params.Bsize} \
-    --gz \
-    --pgen \$name \
-    --covarFile ${covar_file} \
-    --out fit_bin_${pheno_chunk_no}_\${i} \
-    --run-l0 ${master},\${i} \
-    --threads ${params.Threads_S_11} ${params.options_s1} 
-  """
+  if [ ${common.getExtension()} = "pgen" ]; then
+     name=${common.baseName}
+     input_format= "--pgen"
   else
-  """
+     name=${common.name}
+     input_format= "--bgen"
+  fi
   i=${snplist.getSimpleName().split('_')[2].replaceFirst('^job', '')}
   regenie \
     --step 1 \
     --loocv \
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
-    --sample ${sample_file} \
-    --covarFile ${covar_file} \
     --gz \
-    --bgen ${common} \
+    \$input_format \$name \
+    --covarFile ${covar_file} \
     --out fit_bin_${pheno_chunk_no}_\${i} \
     --run-l0 ${master},\${i} \
     --threads ${params.Threads_S_11} ${params.options_s1} 
-
   """
 }
-
-
-
 
 process step_1_l2 {
   label "STEP_1_2"
   cache "lenient"
   scratch false
 
+// Aim : Gobal Prediction
+
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(predictions) from step_1_l1.groupTuple(by: 0).map{ t -> [t[0], t[1][0], t[2][0], t[3].flatten()] }
 tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? [params.CommonVar_file, params.CommonVar_file.replaceAll('.pgen', '.pvar'), params.CommonVar_file.replaceAll('.pgen', '.psam')] : [params.CommonVar_file,params.CommonVar_file + ".bgi",params.CommonVar_file.replaceAll('.bgen$', '.sample')]).toSortedList()
   each file(covar_file) from Channel.fromPath(params.covar_file)
-  
-
 
   output:       
   tuple val(pheno_chunk_no), file(pheno_chunk), file("fit_bin${pheno_chunk_no}_loco_pred.list"), file("*.loco.gz") into step1_l2
@@ -164,17 +142,22 @@ tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.C
 
   publishDir "${params.OutDir}/step1_l2_logs", pattern: "*.log", mode: "copy"
   
-script :
-if (params.CommonVar_file[-4..-1]=="pgen")
+
   """
-    name=${common.baseName}
+  if [ ${common.getExtension()} = "pgen" ]; then
+     name=${common.baseName}
+     input_format= "--pgen"
+  else
+     name=${common.name}
+     input_format= "--bgen"
+  fi
   regenie \
     --step 1 \
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
     --gz \
     --covarFile ${covar_file} \
-    --pgen \$name \
+    \$input_format \$name \
     --out fit_bin${pheno_chunk_no}_loco \
     --run-l1 ${master} \
     --keep-l0 \
@@ -182,24 +165,6 @@ if (params.CommonVar_file[-4..-1]=="pgen")
     --use-relative-path \
     --force-step1 ${params.options_s1}
     """
-else
-    """
-    regenie \
-    --step 1 \
-    --phenoFile ${pheno_chunk} \
-    --bsize ${params.Bsize} \
-    --sample ${sample_file} \
-    --gz \
-    --covarFile ${covar_file} \
-    --bgen ${common} \
-    --out fit_bin${pheno_chunk_no}_loco \
-    --run-l1 ${master} \
-    --keep-l0 \
-    --threads ${params.Threads_S_12} \
-    --use-relative-path \
-    --force-step1 ${params.options_s1}
-
-  """
   }
 
 // _________________________________________STEP2_________________________________________
@@ -207,23 +172,17 @@ else
 // ________________STEP 2 SPLIT ___________________________
 
 process step_2_split {
-  label "STEP_2_split"
+  label "SNP_chunking"
   cache "lenient"
   scratch false 
 
-
-
-
-
+//Aim : parallelisation per n SNPs
 
   input:
   
 tuple file(common), file(input2), file(input3) from Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? [params.test_variants_file, params.test_variants_file.replaceAll('.pgen$', '.pvar'), params.test_variants_file.replaceAll('.pgen$', '.psam')]:[params.test_variants_file,params.test_variants_file.replaceAll('.bgen$', '.sample'), params.test_variants_file+ ".bgi"]).toSortedList().flatten().collate(3)
-each file(Extraction) from Channel.fromPath(params.Extraction_file)
+each file(Extraction) from Channel.fromPath(params.Extraction_file) // Accept Null
 //due to the structuring scheme the input order is different between bgen and pfile formats thus the input 2 and 3
-
-
-
   output:
  tuple file("split*"), file(common), file(input2), file(input3) into split mode flatten
 
@@ -255,10 +214,11 @@ fi
     
 //___________________STEP 2 main ____________________________
 process step_2 {
-  label "STEP_2"
+  label "Asscociation_testing"
   cache "lenient"
   scratch false 
 
+//Aim : Association testing
 
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk), file(loco_pred_list), file(loco_pred), file(split_chunk), file(common), file(input2), file(input3) from step1_l2.combine(split)
@@ -271,45 +231,36 @@ process step_2 {
   publishDir "${params.OutDir}/step2_logs", pattern: "*.log", mode: "copy"
 
 
-script :
-if (params.test_variants_file[-4..-1]=="pgen")
   """
-  name=${common.baseName}
+  if [ ${common.getExtension()} = "pgen" ]; then
+     name=${common.baseName}
+     input_format= "--pgen"
+  else
+     name=${common.name}
+     input_format= "--bgen"
+  fi
+
   regenie \
     --step 2 \
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
-    --pgen \$name \
+    \$input_format \$name \
     --covarFile ${covar_file} \
     --out "\$name"_${pheno_chunk_no}_${split_chunk.baseName}_assoc_ \
     --pred ${loco_pred_list} \
     --extract ${split_chunk} --threads ${params.Threads_S_2} ${params.options_s2}
 
-  """
-  else
-  """
-  name=${common.getName().replaceAll('.bgen$', '')}
-  regenie \
-    --step 2 \
-    --phenoFile ${pheno_chunk} \
-    --sample ${input3} \
-    --bsize ${params.Bsize} \
-    --bgen ${common} \
-    --covarFile ${covar_file} \
-    --out "\$name"_${pheno_chunk_no}_${split_chunk.baseName}_assoc_ \
-    --pred ${loco_pred_list} \
-    --extract ${split_chunk} --threads ${params.Threads_S_2} ${params.options_s2}
   """
 }
 
 
 //______________________MERGE______________________
 process step_2_merge {
-  label "STEP_2"
+  label "Merging"
   cache "lenient"
   scratch false 
 
-
+//Aim : Natural Order Concatenated Association file (1 per phenotype)
 
   input:
   tuple val(pheno_chunk_no), file(summary) from summary_stats.flatten().map{ t -> [t.baseName.split("assoc_")[1], t] }.groupTuple()
@@ -322,18 +273,18 @@ process step_2_merge {
 
 
   """
-Q=\$(find . -name "*.regenie" | sort -V)
+Order=\$(find . -name "*.regenie" | sort -V)
 first="true"
-for i in \$Q
+for i in \$Order
 do
-	if [[ \${first} == "false" ]]; then
-		sed -i '1d' \$i
-	else
-		first="false"
-	fi
+  if [[ \${first} == "false" ]]; then
+    sed -i '1d' \$i
+  else
+    first="false"
+  fi
 done
-cat \$Q > assoc_${pheno_chunk_no}.regenie
+cat \$Order > assoc_${pheno_chunk_no}.regenie
 gzip assoc_${pheno_chunk_no}.regenie
-cat \$Q > assoc_${pheno_chunk_no}.regenie
+cat \$Order > assoc_${pheno_chunk_no}.regenie
   """
 }
