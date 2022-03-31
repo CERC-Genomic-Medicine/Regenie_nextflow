@@ -58,10 +58,10 @@ tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.C
   """
   if [ ${common.getExtension()} = "pgen" ]; then
      name=${common.baseName}
-     input_format= "--pgen"
+     input_format="--pgen"
   else
      name=${common.name}
-     input_format= "--bgen"
+     input_format="--bgen"
   fi
 
   regenie \
@@ -71,7 +71,7 @@ tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.C
     --bsize ${params.Bsize} \
     --gz \
     --covarFile ${covar_file} \
-    \$input_format \$name \
+    \${input_format} \${name} \
     --out fit_bin_${pheno_chunk_no} \
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
@@ -104,10 +104,10 @@ tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.C
   """
   if [ ${common.getExtension()} = "pgen" ]; then
      name=${common.baseName}
-     input_format= "--pgen"
+     input_format="--pgen"
   else
      name=${common.name}
-     input_format= "--bgen"
+     input_format="--bgen"
   fi
   i=${snplist.getSimpleName().split('_')[2].replaceFirst('^job', '')}
   regenie \
@@ -116,7 +116,7 @@ tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.C
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
     --gz \
-    \$input_format \$name \
+    \${input_format} \${name} \
     --covarFile ${covar_file} \
     --out fit_bin_${pheno_chunk_no}_\${i} \
     --run-l0 ${master},\${i} \
@@ -146,10 +146,10 @@ tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.C
   """
   if [ ${common.getExtension()} = "pgen" ]; then
      name=${common.baseName}
-     input_format= "--pgen"
+     input_format="--pgen"
   else
      name=${common.name}
-     input_format= "--bgen"
+     input_format="--bgen"
   fi
   regenie \
     --step 1 \
@@ -157,7 +157,7 @@ tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.C
     --bsize ${params.Bsize} \
     --gz \
     --covarFile ${covar_file} \
-    \$input_format \$name \
+    \${input_format} \${name} \
     --out fit_bin${pheno_chunk_no}_loco \
     --run-l1 ${master} \
     --keep-l0 \
@@ -234,17 +234,17 @@ process step_2 {
   """
   if [ ${common.getExtension()} = "pgen" ]; then
      name=${common.baseName}
-     input_format= "--pgen"
+     input_format="--pgen"
   else
      name=${common.name}
-     input_format= "--bgen"
+     input_format="--bgen"
   fi
 
   regenie \
     --step 2 \
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
-    \$input_format \$name \
+    \${input_format} \${name} \
     --covarFile ${covar_file} \
     --out "\$name"_${pheno_chunk_no}_${split_chunk.baseName}_assoc_ \
     --pred ${loco_pred_list} \
