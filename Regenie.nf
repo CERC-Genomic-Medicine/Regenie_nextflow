@@ -43,9 +43,9 @@ process step1_l0 {
 
   input:
   tuple val(pheno_chunk_no), file(pheno_chunk) from chunks_phenotypes.map { f -> [f.getBaseName().split('_')[1], f] } 
-tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? [params.CommonVar_file, params.CommonVar_file.replaceAll('.pgen', '.pvar'), params.CommonVar_file.replaceAll('.pgen', '.psam')] : [params.CommonVar_file,"NULL",params.CommonVar_file.replaceAll('.bgen$', '.sample')]).toSortedList()
+tuple file(common), file(sample_file), file(pvar) from Channel.fromPath(params.CommonVar_file[-4..-1]=="pgen" ? [params.CommonVar_file, params.CommonVar_file.replaceAll('.pgen', '.pvar'), params.CommonVar_file.replaceAll('.pgen', '.psam')] : [params.CommonVar_file,params.pheno_file,params.CommonVar_file.replaceAll('.bgen$', '.sample')]).toSortedList()
   each file(covar_file) from Channel.fromPath(params.covar_file)
-
+//index bgen review request #277 dummy file used raw phenotype file
 
 
   output:
@@ -183,6 +183,7 @@ process step_2_split {
 tuple file(common), file(input2), file(input3) from Channel.fromPath(params.test_variants_file[-4..-1]=="pgen" ? [params.test_variants_file, params.test_variants_file.replaceAll('.pgen$', '.pvar'), params.test_variants_file.replaceAll('.pgen$', '.psam')]:[params.test_variants_file,params.test_variants_file.replaceAll('.bgen$', '.sample'), params.test_variants_file+ ".bgi"]).toSortedList().flatten().collate(3)
 each file(Extraction) from Channel.fromPath(params.Extraction_file) // Accept Null
 //due to the structuring scheme the input order is different between bgen and pfile formats thus the input 2 and 3
+
   output:
  tuple file("split*"), file(common), file(input2), file(input3) into split mode flatten
 
@@ -230,21 +231,20 @@ process step_2 {
   publishDir "${params.OutDir}/step2_logs", pattern: "*.regenie", mode: "copy"
   publishDir "${params.OutDir}/step2_logs", pattern: "*.log", mode: "copy"
 
-
+//Sample file used in BGEN version to specify samples
   """
+  name=${common.baseName}
   if [ ${common.getExtension()} = "pgen" ]; then
-     name=${common.baseName}
-     input_format="--pgen"
+     input="--pgen ${common.baseName}"
   else
-     name=${common.name}
-     input_format="--bgen"
+     input="--sample ${input3} --bgen ${common.name}"
   fi
 
   regenie \
     --step 2 \
     --phenoFile ${pheno_chunk} \
     --bsize ${params.Bsize} \
-    \${input_format} \${name} \
+    \${input} \
     --covarFile ${covar_file} \
     --out "\$name"_${pheno_chunk_no}_${split_chunk.baseName}_assoc_ \
     --pred ${loco_pred_list} \
