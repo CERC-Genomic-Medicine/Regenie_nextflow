@@ -135,7 +135,7 @@ process step_1_l2 {
 
   """
   if [ ${genotypes_file.getExtension()} = "pgen" ]; then
-     input="--pgen ${genotypes_file}"
+     input="--pgen ${genotypes_file.getBaseName()}"
   else
      input="--bgen ${genotypes_file} --sample ${sample_file}"
   fi
@@ -204,7 +204,7 @@ process step_2 {
 
   """
   if [ ${gwas_genotypes_file.getExtension()} = "pgen" ]; then
-     input="--pgen ${gwas_genotypes_file}"
+     input="--pgen ${gwas_genotypes_file.getBaseName()}"
   else
      input="--bgen ${gwas_genotypes_file} --sample ${samples_file}"
   fi
