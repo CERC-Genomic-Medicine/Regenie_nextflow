@@ -59,13 +59,19 @@ process step1_l0 {
      input="--bgen ${genotypes_file} --sample ${sample_file}"
   fi
 
+  if [ ${params.CatCovar}=""]; then
+     CovarCat=""
+  else
+      CovarCat="--catCovarList ${params.CatCovar}""
+  fi
+
   regenie \
     --step 1 \
     --loocv \
     --bsize ${params.Bsize} \
     --gz \
     --phenoFile ${pheno_chunk} \
-    --covarFile ${covar_file} \
+    --covarFile ${covar_file} \$CovarCat \
     \${input} \
     --out fit_bin_${pheno_chunk_no} \
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
@@ -98,6 +104,14 @@ process step_1_l1 {
   else
      input="--bgen ${genotypes_file} --sample ${sample_file}"
   fi
+
+  if [ ${params.CatCovar}=""]; then
+     CovarCat=""
+  else
+      CovarCat="--catCovarList ${params.CatCovar}""
+  fi
+
+
   i=${snplist.getSimpleName().split('_')[2].replaceFirst('^job', '')}
   regenie \
     --step 1 \
@@ -105,7 +119,7 @@ process step_1_l1 {
     --bsize ${params.Bsize} \
     --gz \
     --phenoFile ${pheno_chunk} \
-    --covarFile ${covar_file} \
+    --covarFile ${covar_file} \$CovarCat \
     \${input} \
     --out fit_bin_${pheno_chunk_no}_\${i} \
     --run-l0 ${master},\${i} \
@@ -139,13 +153,20 @@ process step_1_l2 {
   else
      input="--bgen ${genotypes_file} --sample ${sample_file}"
   fi
+
+  if [ ${params.CatCovar}=""]; then
+     CovarCat=""
+  else
+      CovarCat="--catCovarList ${params.CatCovar}""
+  fi
+
   regenie \
     --step 1 \
     --loocv \
     --bsize ${params.Bsize} \
     --gz \
     --phenoFile ${pheno_chunk} \
-    --covarFile ${covar_file} \
+    --covarFile ${covar_file} \$CovarCat \
     \${input} \
     --out fit_bin${pheno_chunk_no}_loco \
     --run-l1 ${master} \
@@ -209,13 +230,20 @@ process step_2 {
      input="--bgen ${gwas_genotypes_file} --sample ${samples_file}"
   fi
 
+  if [ ${params.CatCovar}=""]; then
+     CovarCat=""
+  else
+      CovarCat="--catCovarList ${params.CatCovar}""
+  fi
+
+
   regenie \
     --step 2 \
     --gz \
     --loocv \
     --bsize ${params.Bsize} \
     --phenoFile ${pheno_chunk} \
-    --covarFile ${covar_file} \
+    --covarFile ${covar_file} \$CovarCat \
     \${input} \
     --out "${pheno_chunk_no}_${chromosome_chunk.getSimpleName()}_assoc" \
     --pred ${loco_pred_list} \
