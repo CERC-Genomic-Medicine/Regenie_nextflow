@@ -62,7 +62,7 @@ process step1_l0 {
   if [ ${params.CatCovar}=""]; then
      CovarCat=""
   else
-      CovarCat="--catCovarList ${params.CatCovar}""
+      CovarCat="--catCovarList ${params.CatCovar}"
   fi
 
   regenie \
@@ -108,7 +108,7 @@ process step_1_l1 {
   if [ ${params.CatCovar}=""]; then
      CovarCat=""
   else
-      CovarCat="--catCovarList ${params.CatCovar}""
+      CovarCat="--catCovarList ${params.CatCovar}"
   fi
 
 
@@ -157,7 +157,7 @@ process step_1_l2 {
   if [ ${params.CatCovar}=""]; then
      CovarCat=""
   else
-      CovarCat="--catCovarList ${params.CatCovar}""
+      CovarCat="--catCovarList ${params.CatCovar}"
   fi
 
   regenie \
@@ -233,7 +233,7 @@ process step_2 {
   if [ ${params.CatCovar}=""]; then
      CovarCat=""
   else
-      CovarCat="--catCovarList ${params.CatCovar}""
+      CovarCat="--catCovarList ${params.CatCovar}"
   fi
 
 
