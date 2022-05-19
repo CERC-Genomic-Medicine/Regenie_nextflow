@@ -63,16 +63,6 @@ F2   S2      0.2             0.5
 if there is no FID information use IIDx2 (and --double-id option in PGEN generation) psam must correspond to the FID ID column
 
 
-# Advance implementations
-
-## Binary testing
-If desired, the options parameter within Standard.config can be modified to add Binary testing specification:
- - flag : bt
- - testing flag : --firth --firth-se etc.
-
-## Further Regenie Parameters
-If desired, the options parameter within Standard.config can be modified to accommodate all Regenie options.
-
 ## Additional Scripts provided
 - util/Scripts/random_gen.py (Generate random covariate or phenotype)
 - Manhattan.py (provide cursory manhattan plot)
