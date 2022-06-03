@@ -1,5 +1,3 @@
-Not yet ready
-
 # Basic Usage
 
 Specify necessary parameter parameters in .config files
@@ -32,7 +30,7 @@ Minimally Specify in in Step1_convert_VCF.config :
  - Complete Path to VCF/BCF (ex.[...]/* .vcf.gz ; with indexes in the same folder)
  - Bedfile of low complexity/repeat regions (instances can be fount in util file) 
  - Path to executable (plink2/qctool/bgenix)
-** if there is no Family ID && using the PGEN version consider --double-id
+** if there is no Family ID && using the PGEN version consider adding --double-id to the nf files
 
 ## Step 2 Input file generation
 necessary tools plink version >2
