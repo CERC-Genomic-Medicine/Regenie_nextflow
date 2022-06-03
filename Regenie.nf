@@ -55,24 +55,31 @@ process step1_l0 {
   """
   if [ ${genotypes_file.getExtension()} = "pgen" ]; then
      input="--pgen ${genotypes_file.getBaseName()}"
+     echo "PGEN"
   else
      input="--bgen ${genotypes_file} --sample ${sample_file}"
   fi
 
-  if [ ${params.CatCovar}=""]; then
+  if [ "${params.CatCovar}" = "" ]; then
      CovarCat=""
   else
       CovarCat="--catCovarList ${params.CatCovar}"
   fi
 
+  if [ ${params.BinaryTrait} = "true" ]; then
+     BinaryTrait="--bt"
+  else
+      BinaryTrait=""
+  fi
+
   regenie \
     --step 1 \
     --loocv \
-    --bsize ${params.Bsize} \
+    --bsize ${params.Bsize} \$BinaryTrait \
     --gz \
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
-    \${input} \
+    \$input \
     --out fit_bin_${pheno_chunk_no} \
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
@@ -101,22 +108,29 @@ process step_1_l1 {
   """
   if [ ${genotypes_file.getExtension()} = "pgen" ]; then
      input="--pgen ${genotypes_file.getBaseName()}"
+     echo "PGEN"
   else
      input="--bgen ${genotypes_file} --sample ${sample_file}"
   fi
 
-  if [ ${params.CatCovar}=""]; then
+  if [ "${params.CatCovar}" = "" ]; then
      CovarCat=""
+     echo "WORK"
   else
       CovarCat="--catCovarList ${params.CatCovar}"
   fi
 
+  if [ ${params.BinaryTrait} = "true" ]; then
+     BinaryTrait="--bt"
+  else 
+      BinaryTrait=""
+  fi
 
   i=${snplist.getSimpleName().split('_')[2].replaceFirst('^job', '')}
   regenie \
     --step 1 \
     --loocv \
-    --bsize ${params.Bsize} \
+    --bsize ${params.Bsize} \$BinaryTrait \
     --gz \
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
@@ -154,16 +168,22 @@ process step_1_l2 {
      input="--bgen ${genotypes_file} --sample ${sample_file}"
   fi
 
-  if [ ${params.CatCovar}=""]; then
+  if [ "${params.CatCovar}" = "" ]; then
      CovarCat=""
   else
       CovarCat="--catCovarList ${params.CatCovar}"
   fi
 
+  if [ ${params.BinaryTrait} ]; then
+     BinaryTrait="--bt"
+  else 
+      BinaryTrait=""
+  fi
+
   regenie \
     --step 1 \
     --loocv \
-    --bsize ${params.Bsize} \
+    --bsize ${params.Bsize} \$BinaryTrait \
     --gz \
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
@@ -177,7 +197,10 @@ process step_1_l2 {
     """
   }
 
+
 // _________________________________________STEP2_________________________________________
+
+
 
 process chunk_chromosomes {
    cache "lenient"
@@ -186,7 +209,7 @@ process chunk_chromosomes {
    cpus 1
 
    input:
-   file variants_file from Channel.fromPath(params.gwas_genotypes_files).map(f -> f.getExtension() == "pgen" ? file("${f.getParent()}/${f.getBaseName()}.pvar") : f + ".bgi")
+   file variants_file from Channel.fromPath(params.gwas_genotypes_files)).map(f -> f.getExtension() == "pgen" ? file("${f.getParent()}/${f.getBaseName()}.pvar") : f + ".bgi")
 
    output:
    tuple val("${variants_file.getSimpleName()}"), file("${variants_file.getSimpleName()}_*.txt") into chromosome_chunks mode flatten
@@ -202,9 +225,14 @@ process chunk_chromosomes {
 
 
 chromosome_chunks = chromosome_chunks.combine(Channel.fromPath(params.gwas_genotypes_files).map(f -> f.getExtension() == "pgen" ? ["${f.getSimpleName()}", f, file("${f.getParent()}/${f.getBaseName()}.psam"), file("${f.getParent()}/${f.getBaseName()}.pvar")] : ["${f.getSimpleName()}", f, file("${f.getParent()}/${f.getBaseName()}.sample"), f + ".bgi"]), by: 0)
-    
-       
+
+
+// _________________________________________STEP2_________________________________________
+
+
 //___________________STEP 2 main ____________________________
+
+
 
 process step_2 {
   label "Asscociation_testing"
@@ -230,21 +258,34 @@ process step_2 {
      input="--bgen ${gwas_genotypes_file} --sample ${samples_file}"
   fi
 
-  if [ ${params.CatCovar}=""]; then
+  if [ "${params.CatCovar}" = "" ]; then
      CovarCat=""
   else
       CovarCat="--catCovarList ${params.CatCovar}"
   fi
-
+  if [ ${params.BinaryTrait} ]; then
+    if [ ${params.firth}  ]; then
+      if [ ${params.approx} ]; then
+        BinaryTrait='--bt --firth --approx --pThresh ${params.pThresh}'
+      else
+        BinaryTrait="--bt --firth --pThresh ${params.pThresh}"
+      fi
+    else
+      BinaryTrait="--bt --SPA --pThresh ${params.pThresh}"
+    fi
+  else 
+      BinaryTrait=""
+  fi
 
   regenie \
     --step 2 \
     --gz \
     --loocv \
-    --bsize ${params.Bsize} \
+    --bsize ${params.Bsize} \$BinaryTrait \
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
     \${input} \
+    --test ${params.test} \
     --out "${pheno_chunk_no}_${chromosome_chunk.getSimpleName()}_assoc" \
     --pred ${loco_pred_list} \
     --extract ${chromosome_chunk} \
@@ -252,7 +293,6 @@ process step_2 {
     --lowmem
   """
 }
-
 
 //______________________MERGE______________________
 process step_2_merge {
