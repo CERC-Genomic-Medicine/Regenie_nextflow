@@ -4,6 +4,7 @@ base_command="singularity run -B $InDir:$HOME/input  -B $OutDir:$HOME/ouput $SIF
     --step 1 \
     --loocv \
     --covarFile $HOME/input/$CovarName \
+    --catCovarList $CovarCAT \
     --phenoFile $HOME/input/$PheName \
     --bsize $Bsize \
     --gz"
