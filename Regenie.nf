@@ -70,6 +70,9 @@ process step1_l0 {
      BinaryTrait="--bt"
   else
       BinaryTrait=""
+      if [ ${params.RINT} = "true" ]; then
+      BinaryTrait="--apply-rint"
+      fi
   fi
 
   regenie \
@@ -124,6 +127,9 @@ process step_1_l1 {
      BinaryTrait="--bt"
   else 
       BinaryTrait=""
+      if [ ${params.RINT} = "true" ]; then
+      BinaryTrait="--apply-rint"
+      fi
   fi
 
   i=${snplist.getSimpleName().split('_')[2].replaceFirst('^job', '')}
@@ -178,6 +184,9 @@ process step_1_l2 {
      BinaryTrait="--bt"
   else 
       BinaryTrait=""
+      if [ ${params.RINT} = "true" ]; then
+      BinaryTrait="--apply-rint"
+      fi
   fi
 
   regenie \
@@ -275,6 +284,9 @@ process step_2 {
     fi
   else 
       BinaryTrait=""
+      if [ ${params.RINT} = "true" ]; then
+      BinaryTrait="--apply-rint"
+      fi
   fi
 
   regenie \
