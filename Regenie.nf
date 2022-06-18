@@ -218,7 +218,7 @@ process chunk_chromosomes {
    cpus 1
 
    input:
-   file variants_file from Channel.fromPath(params.gwas_genotypes_files)).map(f -> f.getExtension() == "pgen" ? file("${f.getParent()}/${f.getBaseName()}.pvar") : f + ".bgi")
+   file variants_file from Channel.fromPath(params.gwas_genotypes_files).map(f -> f.getExtension() == "pgen" ? file("${f.getParent()}/${f.getBaseName()}.pvar") : f + ".bgi")
 
    output:
    tuple val("${variants_file.getSimpleName()}"), file("${variants_file.getSimpleName()}_*.txt") into chromosome_chunks mode flatten
