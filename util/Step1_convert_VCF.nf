@@ -8,7 +8,8 @@ process filter_by_chrom {
 
   input:
   file vcf from Channel.fromPath(params.VCF_files) // accepts VCF or BCF
-  each file(exclude_bed) from Channel.fromPath("${workflow.projectDir}/Low_complexity_regions/${params.lcr_regions}.bed.gz")
+  each file(LCR_bed) from Channel.fromPath("${workflow.projectDir}/Low_complexity_regions/${params.lcr_regions}.bed.gz")
+  each file(LD_bed) from Channel.fromPath("${workflow.projectDir}/Low_complexity_regions/${params.ld_regions}.bed.gz")
   
   output:
   file "${vcf.getBaseName()}.common_independent_snps.*" into filtered_by_chrom mode flatten
@@ -21,13 +22,14 @@ process filter_by_chrom {
      plink_import_option="--vcf ${vcf}"
   fi
 
+  cat ${LCR_bed} ${LD_bed} > exclude_bed.gz
   ${params.plink2_exec} \${plink_import_option} \
     --maf ${params.maf} \
     --geno ${params.geno} \
     --hwe ${params.HWE} \
     --min-alleles 2 \
     --max-alleles 2 \
-    --exclude bed0 ${exclude_bed} \
+    --exclude bed0 exclude_bed.gz \
     --snps-only \
     --set-all-var-ids '@:#:\$r:\$a' \
     --indep-pairwise 1000 100 0.9 \
