@@ -59,7 +59,7 @@ process step1_l0 {
      input="--bgen ${genotypes_file} --sample ${sample_file}"
   fi
 
-  if [ ${params.CatCovar}=""]; then
+  if [ -z "${params.CatCovar}" ]; then
      CovarCat=""
   else
       CovarCat="--catCovarList ${params.CatCovar}"
@@ -105,7 +105,7 @@ process step_1_l1 {
      input="--bgen ${genotypes_file} --sample ${sample_file}"
   fi
 
-  if [ ${params.CatCovar}=""]; then
+  if [ -z "${params.CatCovar}" ]; then
      CovarCat=""
   else
       CovarCat="--catCovarList ${params.CatCovar}"
@@ -154,7 +154,7 @@ process step_1_l2 {
      input="--bgen ${genotypes_file} --sample ${sample_file}"
   fi
 
-  if [ ${params.CatCovar}=""]; then
+  if [ -z "${params.CatCovar}" ]; then
      CovarCat=""
   else
       CovarCat="--catCovarList ${params.CatCovar}"
@@ -230,7 +230,7 @@ process step_2 {
      input="--bgen ${gwas_genotypes_file} --sample ${samples_file}"
   fi
 
-  if [ ${params.CatCovar}=""]; then
+  if [ -z "${params.CatCovar}" ]; then
      CovarCat=""
   else
       CovarCat="--catCovarList ${params.CatCovar}"
