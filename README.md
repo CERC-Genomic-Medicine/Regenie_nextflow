@@ -21,9 +21,7 @@ This implementation does not perform the following, which can be considered nece
 @@ By default Step 2 inputs (imputed/Exome/CNV files) are unfiltered, such step should be taken before this pipeline @@
 @@ Commonly, depending on the naming structure within VCF, the sample naming might differ from the phenotype/covariate file, consider using the '-double-id/--const-fid/--id-delim' plink2 options @@
 ```
-
 ![workflow diagram](workflow.png)
-
 
 ## Instalation 
 
