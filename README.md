@@ -53,7 +53,7 @@ tested with singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:v3.0.1.g
 
 ### Prepartion of LD-pruned set of variants for Whole genome modeling (regenie's first step)
 
-1) At Minimum, change declaration of the following variables within the Step1_convert_VCF.config file : 
+1) At Minimum, change declaration of the following variables within the Common_LDpruned_variant.config file : 
 
 * `VCF_files` -- full path to your input files ( Genotyped-array files if possible )
 * `lcr_regions` -- low complexity region bedfile, verify that the declaration uses the same genome buid (denotated by the option name)
@@ -86,7 +86,7 @@ or
 
 ### (Imputed Only) Prepartion of variant files for Single-variant association testing (regenie's second step)
 
-2) At Minimum, change declaration of the following variables within the Step2_convert_VCF.config file : 
+2) At Minimum, change declaration of the following variables within the Convert_imputed_VCF.config file : 
 
 * `VCF_files` -- full path to your input files ( Genotyped-array files if possible )
 * `vcf_field` --  dosage type depending on the desired output format and availlability
@@ -102,7 +102,7 @@ or
 
 ### Execution of the regenie GWAS analyses
 
-2) At Minimum, change declaration of the following variables within the Standard.config file (or Binairy.config if phenotypes are binary) : 
+2) At Minimum, change declaration of the following variables within the Regenie_main_[continuous/binary].config file : 
 
 * `genotypes_file` -- Full path to the .pgen or .bgen files containing LD-pruned set of variants
 * `gwas_genotypes_files` -- Full path to the .pgen or .bgen variant file for Single-variant association testing 
@@ -114,7 +114,7 @@ or
 * `CatCovar` -- Comma separated Categorical Variables
 * `container` -- Path to image of regenie
 
-phenotype or covariate file structure
+phenotype or covariate file structure :
 
 ```
 FID IID Pheno1/Covar1 Pheno2/Covar2  
@@ -137,5 +137,5 @@ F2   S2      0.2             0.5
 
 ## Additional Scripts 
 - util/Scripts/random_gen.py (Generate random covariate or phenotype)
-- Manhattan.py (provide cursory manhattan plot)
+- Manhattan_Miami.py (provide manhattan and/or Miami plot)
 * needs python packages: pandas, bioinfokit, matplotlib, argparse and random
