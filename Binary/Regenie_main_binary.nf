@@ -21,10 +21,14 @@ process chunk_phenotype {
   
   Nb_PHENO=\$((\$(head -n 1 temp_pheno_file.txt | wc -w ) - 2)) 
   val=\$((\$Nb_PHENO/${params.PheStep}))
-  if [[ \$val > 1 ]]; then
+  mod=\$((\$Nb_PHENO%${params.PheStep}))
+  if [[ \$val > 0 ]]; then
     for ((Q=1;Q<=\$val;Q++)); do
       cut -f 1,2,\$((( \$Q - 1) * ${params.PheStep} + 3 ))-\$(((\$Q * ${params.PheStep}) + 2)) temp_pheno_file.txt > chunk_\${Q}_phe.txt
     done
+    if [[ \$mod != 0 ]]; then
+    	cut -f 1,2,\$((( \$Q - 1) * ${params.PheStep} + 3 ))-\$(\$Nb_PHENO + 3) temp_pheno_file.txt > chunk_\${Q}_phe.txt
+    fi
   else
     cp temp_pheno_file.txt chunk_1_phe.txt
   fi
@@ -59,7 +63,7 @@ process step1_l0 {
      input="--bgen ${genotypes_file} --sample ${sample_file}"
   fi
 
-  if [ ${params.CatCovar}=""]; then
+  if [ -z "${params.CatCovar}" ]; then
      CovarCat=""
   else
       CovarCat="--catCovarList ${params.CatCovar}"
@@ -68,6 +72,9 @@ process step1_l0 {
   regenie \
     --step 1 \
     --loocv \
+    --af-cc --bt \
+  --firth \
+  --pThresh 0.05 \
     --bsize ${params.Bsize} \
     --gz \
     --phenoFile ${pheno_chunk} \
@@ -105,7 +112,7 @@ process step_1_l1 {
      input="--bgen ${genotypes_file} --sample ${sample_file}"
   fi
 
-  if [ ${params.CatCovar}=""]; then
+  if [ -z "${params.CatCovar}" ]; then
      CovarCat=""
   else
       CovarCat="--catCovarList ${params.CatCovar}"
@@ -116,6 +123,7 @@ process step_1_l1 {
   regenie \
     --step 1 \
     --loocv \
+    --af-cc --bt --firth --pThresh 0.05 \
     --bsize ${params.Bsize} \
     --gz \
     --phenoFile ${pheno_chunk} \
@@ -154,7 +162,7 @@ process step_1_l2 {
      input="--bgen ${genotypes_file} --sample ${sample_file}"
   fi
 
-  if [ ${params.CatCovar}=""]; then
+  if [ -z "${params.CatCovar}" ]; then
      CovarCat=""
   else
       CovarCat="--catCovarList ${params.CatCovar}"
@@ -173,6 +181,9 @@ process step_1_l2 {
     --keep-l0 \
     --threads ${params.Threads_S_12} \
     --use-relative-path \
+    --af-cc --bt \
+  --firth \
+  --pThresh 0.05 \
     --lowmem
     """
   }
@@ -190,6 +201,7 @@ process chunk_chromosomes {
 
    output:
    tuple val("${variants_file.getSimpleName()}"), file("${variants_file.getSimpleName()}_*.txt") into chromosome_chunks mode flatten
+   publishDir "${params.OutDir}/step2_logs", pattern: "*.txt", mode: "copy"
 
    """
    if [ ${variants_file.getExtension()} = "pvar" ]; then
@@ -209,7 +221,11 @@ chromosome_chunks = chromosome_chunks.combine(Channel.fromPath(params.gwas_genot
 process step_2 {
   label "Asscociation_testing"
   cache "lenient"
-  scratch false 
+  scratch true
+  time { 12.hour * task.attempt }
+  errorStrategy { task.exitStatus == 140 ? 'retry' : 'terminate' }
+  maxRetries 3
+
 
 //Aim : Association testing
 
@@ -220,9 +236,10 @@ process step_2 {
   output:       
   file("*.regenie.gz") into summary_stats mode flatten
   file "*.log" into step2_logs
+  path("*.list"), optional: true
   
   publishDir "${params.OutDir}/step2_logs", pattern: "*.log", mode: "copy"
-
+  publishDir "${params.OutDir}/step2_logs", pattern: "*.list", mode: "copy"
   """
   if [ ${gwas_genotypes_file.getExtension()} = "pgen" ]; then
      input="--pgen ${gwas_genotypes_file.getBaseName()}"
@@ -230,7 +247,7 @@ process step_2 {
      input="--bgen ${gwas_genotypes_file} --sample ${samples_file}"
   fi
 
-  if [ ${params.CatCovar}=""]; then
+  if [ -z "${params.CatCovar}" ]; then
      CovarCat=""
   else
       CovarCat="--catCovarList ${params.CatCovar}"
@@ -247,10 +264,13 @@ process step_2 {
     \${input} \
     --out "${pheno_chunk_no}_${chromosome_chunk.getSimpleName()}_assoc" \
     --pred ${loco_pred_list} \
+    --af-cc  --bt \
+  --firth --approx  ${params.Binairy}\
+  --pThresh 0.05 \
     --extract ${chromosome_chunk} \
     --threads ${params.Threads_S_2} \
     --lowmem
-  """
+    """
 }
 
 
@@ -258,7 +278,10 @@ process step_2 {
 process step_2_merge {
   label "Merging"
   cache "lenient"
-  scratch false 
+  scratch false
+  time { 2.hour * task.attempt }
+  errorStrategy { task.exitStatus == 140 ? 'retry' : 'terminate' }
+  maxRetries 3
 
   //Aim : Natural Order Concatenated Association file (1 per phenotype)
 
