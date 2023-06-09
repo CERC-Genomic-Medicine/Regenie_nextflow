@@ -84,7 +84,7 @@ or
 * `memory` -- memory for each jobs
 
 
-### Prepartion of variant files for Single-variant association testing (regenie's second step)
+### (Imputed Only) Prepartion of variant files for Single-variant association testing (regenie's second step)
 
 2) At Minimum, change declaration of the following variables within the Step2_convert_VCF.config file : 
 
@@ -112,6 +112,7 @@ or
 * `pheno_file` -- phenotype file tab or spaces delimited (see below)
 * `covar_file` -- covariate file tab delimited (see below)
 * `CatCovar` -- Comma separated Categorical Variables
+* `container` -- Path to image of regenie
 
 phenotype or covariate file structure
 
