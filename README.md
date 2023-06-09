@@ -102,7 +102,7 @@ or
 
 ### Execution of the regenie GWAS analyses
 
-2) At Minimum, change declaration of the following variables within the Regenie_main_[continuous/binary].config file : 
+3) At Minimum, change declaration of the following variables within the Regenie_main_[continuous/binary].config file : 
 
 * `genotypes_file` -- Full path to the .pgen or .bgen files containing LD-pruned set of variants
 * `gwas_genotypes_files` -- Full path to the .pgen or .bgen variant file for Single-variant association testing 
