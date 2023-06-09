@@ -1,7 +1,7 @@
 # Regenie Parallelisation Pipeline
 
 To be done :
-Further documentation clarification on the use of WGS data within this pipeline
+Further documentation clarification on the use of WGS data within this pipeline  
 Integration of the burden testing branch
 
 
