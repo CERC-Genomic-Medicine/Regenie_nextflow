@@ -1,4 +1,4 @@
-# Regenie Parallelisation Pipeline
+# Regenie Parallelization Pipeline
 
 To be done :  
 * Further documentation clarification on the use of WGS data within this pipeline  
@@ -7,17 +7,17 @@ To be done :
 
 ## About
 
-Pipeline to perform further parallelize [regenie](https://rgcgithub.github.io/regenie/) (Mbatchou, J., Barnard, L., Backman, J. _et al._ ) on Imputed/Exome/CNV/WGS data, to evaluate genome association with binary and continuous phenotype. Currently does not support burden testing or interaction tests (to be implemented). Regenie is a tool to perform genome wide association testing in a fast and memory efficient capacity, this pipeline further parallelise the process.
+Pipeline to perform further parallelize [regenie](https://rgcgithub.github.io/regenie/) (Mbatchou, J., Barnard, L., Backman, J. _et al._ ) on Imputed/Exome/CNV/WGS data, to evaluate genome association with binary and continuous phenotype. Currently does not support burden testing or interaction tests (to be implemented). Regenie is a tool to perform genome-wide association testing in a fast and memory efficient capacity, this pipeline further parallelizes the process.
 
-This pipeline parallelise the regenie process in three level (as seen below) : 1) Phenotypes are processed in parallel over the whole pipline, 2) the whole genome modeling (step 1) is partly processed in parallel per variant, and 3) Variant assoiciation testing is parralelised by processing variants in multiple distributed distinct groups.
+This pipeline parallelizes the regenie process in three levels (as seen below) : 1) Phenotypes are processed in parallel over the whole pipeline, 2) the whole genome modelling (step 1) is partly processed in parallel per variant, and 3) Variant association testing is paralleled by processing variants in multiple distributed distinct groups.
  
-This implementation does not perform the following, which can be considered necessary, principal componant analysis (almost always used as covariates), ancestry subsetisation (as with most GWAS tool regenie does not perform well with multiple ancestry combined) and by default the variant used for association testing are unfiltered (such step should be performed in advance).
+This implementation does not perform the following, which can be considered necessary, principal component analysis (almost always used as covariates), ancestry selection (as with most GWAS tool regenie does not perform well with multiple ancestry combined) and by default the variants used for association testing are unfiltered (such step should be performed in advance).
 
 ## Workflow
 
 ```diff
 - Important!
-@@ Phenotype file must be formated as mentionned in regenie Documentation see below for example @@
+@@ Phenotype file must be formatted as mentioned in regenie Documentation see below for example @@
 @@ By default Step 2 inputs (imputed/Exome/CNV files) are unfiltered, such step should be taken before this pipeline @@
 @@ Commonly, depending on the naming structure within VCF, the sample naming might differ from the phenotype/covariate file, consider using the '-double-id/--const-fid/--id-delim' plink2 options @@
 ```
@@ -25,7 +25,7 @@ This implementation does not perform the following, which can be considered nece
 
 ## Installation 
 
-### Software requiered
+### Software required
 Input file preparation :
 
 - git (installation)
@@ -54,19 +54,19 @@ tested with singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:v3.0.1.g
 ```
 ## Execution
 
-### Prepartion of LD-pruned set of variants for Whole genome modeling (regenie's first step)
+### Preparation of LD-pruned set of variants for Whole genome modelling (regenie's first step)
 
 1) At Minimum, change declaration of the following variables within the Common_LDpruned_variant.config file : 
 
 * `VCF_files` -- full path to your input files ( Genotyped-array files if possible )
-* `lcr_regions` -- low complexity region bedfile, verify that the declaration uses the same genome buid (denotated by the option name)
-* `ld_regions` -- long range high LD region, verify that the declaration uses the same genome buid (denotated by the option name)
-* `plink2_exec` -- path to plink execuable or 'plink2' if already in your $PATH
+* `lcr_regions` -- low complexity region bed file, verify that the declaration uses the same genome build (denoted by the option name)
+* `ld_regions` -- long-range high LD region, verify that the declaration uses the same genome build (denoted by the option name)
+* `plink2_exec` -- path to plink executable or 'plink2' if already in your $PATH
 or
-* `qctool_exec` and  `bgenix_exec` -- Add path to respective execuable (qctools bgenix) or their name if already in your $PATH
+* `qctool_exec` and  `bgenix_exec` -- Add path to respective executable (qctools bgenix) or their name if already in your $PATH
 
 ```
-@@ Important : Other variable are present but have a default value :
+@@ Important : Other variables are present but have a default value :
 ```
 
 * `format` -- format of the output (valid options : PGEN / BGEN)
@@ -82,20 +82,20 @@ or
 * `OutDir` -- Output directory
 * `executor` -- clusters executor
 * `clusterOptions` -- option to be added to the job submission (generally billing account)
-* `cpus` -- number of cpu for each jobs
+* `cpus` -- number of CPU for each job
 * `time` -- job time limit
-* `memory` -- memory for each jobs
+* `memory` -- memory for each job
 
 
-### (Imputed Only) Prepartion of variant files for Single-variant association testing (regenie's second step)
+### (Imputed Only) Preparation of variant files for Single-variant association testing (regenie's second step)
 
 2) At Minimum, change declaration of the following variables within the Convert_imputed_VCF.config file : 
 
 * `VCF_files` -- full path to your input files ( Genotyped-array files if possible )
-* `vcf_field` --  dosage type depending on the desired output format and availlability
-* `plink2_exec` -- path to plink execuable or 'plink2' if already in your $PATH
+* `vcf_field` --  dosage type depending on the desired output format and availability
+* `plink2_exec` -- path to plink executable or 'plink2' if already in your $PATH
 or
-* `qctool_exec`,  `bgenix_exec` and `bcftools_exec` -- path to respective execuable (qctools bgenix bcftools) or their name if already in your $PATH
+* `qctool_exec`,  `bgenix_exec` and `bcftools_exec` -- path to respective executable (qctools bgenix bcftools) or their name if already in your $PATH
 
 ```
 @@ Important : Other variables are present but have a default value
@@ -109,9 +109,9 @@ or
 
 * `genotypes_file` -- Full path to the .pgen or .bgen files containing LD-pruned set of variants
 * `gwas_genotypes_files` -- Full path to the .pgen or .bgen variant file for Single-variant association testing 
-* `PheStep` -- Number of phenotype to be analysed in each jobs (i.e. total number of phenotype / PheStep = job parallelisation level)
+* `PheStep` -- Number of phenotype to be analyzed in each job (i.e. total number of phenotypes / PheStep = job parallelization level)
 * `njobs` -- Number of jobs over which part of the first step of regenie is distributed
-* `SnpStep` --  number of SNPs to be examined in each jobs instances of regenies second step (i.e. total number of SNPs / SnpStep = nb jobs @ second step)
+* `SnpStep` --  number of SNPs to be examined in each job instances of regenies second step (i.e. total number of SNPs / SnpStep = nb jobs @ second step)
 * `pheno_file` -- phenotype file tab or spaces delimited (see below)
 * `covar_file` -- covariate file tab delimited (see below)
 * `CatCovar` -- Comma separated Categorical Variables
@@ -127,18 +127,18 @@ F2   S2      0.2             0.5
 ```
 
 ```
-@@ Important : the pipeline is paralized per phenotype group (see PheStep) throughout, therefore the total number of job for regenie's step 1 and 2 are multiplied.
+@@ Important : the pipeline is parallelized per phenotype group (see PheStep) throughout, therefore the total number of job for regenie's step 1 and 2 are multiplied.
 @@ Important : Other variables are present but have a default value
 ```
 
-* `Threads_S_10` -- number of threads to be declared to regenie for the creation files necessary for of the parallelisation of the first step
+* `Threads_S_10` -- number of threads to be declared to regenie for the creation files necessary for of the parallelization of the first step
 * `Threads_S_11` -- number of threads to be declared to regenie in the Ridge regression part of the first step
 * `Threads_S_12` -- number of threads to be declared to regenie in the Cross-validation part of the first step
 * `Threads_S_2` -- number of threads to be declared to regenie in the second step
-* `Bsize` -- Numnber of variants to be kept in memoy (i.e. block)
-* `Binairy` -- If using binairy phenotype additional modidfication of default argument (maxstep-null and/or maxiter-null) may be requiered to achieve convergence 
+* `Bsize` -- Number of variants to be kept in memory (i.e. block)
+* `Binairy` -- If using binary phenotype additional modification of default argument (maxstep-null and/or maxiter-null) may be required to achieve convergence 
 
 ## Additional Scripts 
-- util/Scripts/random_gen.py (Generate random covariate or phenotype)
-- Manhattan_Miami.py (provide manhattan and/or Miami plot)
-* needs python packages: pandas, bioinfokit, matplotlib, argparse and random
+- util/Scripts/random_gen.py (generate random covariate or phenotype)
+- Manhattan_Miami.py (provide Manhattan and/or Miami plot)
+* needs python packages: pandas, matplotlib, argparse and random
