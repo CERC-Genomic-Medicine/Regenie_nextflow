@@ -23,7 +23,7 @@ This implementation does not perform the following, which can be considered nece
 ```
 ![workflow diagram](workflow.png)
 
-## Instalation 
+## Installation 
 
 ### Software requiered
 Input file preparation :
@@ -41,7 +41,7 @@ Regenie main pipeline :
 
 \* If used in ComputeCanada environment can be loaded through command : module load [ Package name ]
 
-### Installation
+### Install
 
 - Clone this repository
 ```
