@@ -1,7 +1,6 @@
 # Regenie Parallelization Pipeline
 
 To be done :  
-* Further documentation clarification on the use of WGS data within this pipeline  
 * Integration of the burden testing branch
 
 
@@ -56,6 +55,7 @@ tested with singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:v3.0.1.g
 
 ### Preparation of LD-pruned set of variants for Whole genome modelling (regenie's first step)
 
+
 1) At Minimum, change declaration of the following variables within the Common_LDpruned_variant.config file : 
 
 * `VCF_files` -- full path to your input files ( Genotyped-array files if possible )
@@ -66,7 +66,8 @@ or
 * `qctool_exec` and  `bgenix_exec` -- Add path to respective executable (qctools bgenix) or their name if already in your $PATH
 
 ```
-@@ Important : Other variables are present but have a default value :
+@@ Important : Other variables are present but have a default value see below
+@@ Important : If WGS, Rsq should be lower (more stringent) to result in below 1 million SNP
 ```
 
 * `format` -- format of the output (valid options : PGEN / BGEN)
@@ -74,6 +75,7 @@ or
 * `geno` -- Maximum Missing genotype frequency per-variant
 * `mind` -- Maximum Missing genotype frequency per-sample
 * `HWE` -- Hardy-Weinberg Equilibrium threshold
+* `Rsq` -- Independance clumping threshold (for WGS a lower value (more stringent) should be considered (ex. 0.3))
 
 ```
 @@ The following options are general and present in  all configuration files :
@@ -106,6 +108,11 @@ or
 ### Execution of the regenie GWAS analyses
 
 3) At Minimum, change declaration of the following variables within the Regenie_main_[continuous/binary].config file : 
+
+```
+@@ Important : If WGS, WGS file should be directly inputed in the gwas_genotypes_files. 
+```
+
 
 * `genotypes_file` -- Full path to the .pgen or .bgen files containing LD-pruned set of variants
 * `gwas_genotypes_files` -- Full path to the .pgen or .bgen variant file for Single-variant association testing 
