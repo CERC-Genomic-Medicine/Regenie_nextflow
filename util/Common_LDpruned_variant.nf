@@ -26,6 +26,7 @@ process filter_by_chrom_VCF_BCF {
   ${params.plink2_exec} \${plink_import_option} \
     --maf ${params.maf} \
     --geno ${params.geno} \
+    --mind ${params.mind} \
     --hwe ${params.HWE} \
     --min-alleles 2 \
     --max-alleles 2 \
@@ -70,6 +71,7 @@ process filter_by_chrom_pgen_bgen {
     --maf ${params.maf} \
     --geno ${params.geno} \
     --hwe ${params.HWE} \
+    --mind ${params.mind} \
     --min-alleles 2 \
     --max-alleles 2 \
     --exclude bed0 exclude_bed.gz \
