@@ -12,6 +12,10 @@ This pipeline parallelizes the regenie process in three levels (as seen below) :
  
 This implementation does not perform the following, which can be considered necessary, principal component analysis (almost always used as covariates), ancestry selection (as with most GWAS tool regenie does not perform well with multiple ancestry combined) and by default the variants used for association testing are unfiltered (such step should be performed in advance).
 
+## Caveat about X chromosome
+
+By default, BGEN stores non-par region of the X chromosome in a haploid format, while this storage is correct, Regenie's underlying model uses a homozygote diploid format for these regions. To remedie this, we recommend working with PGEN, which by default convert those regions to the expected format.
+
 ## Workflow
 
 ```diff
@@ -19,6 +23,7 @@ This implementation does not perform the following, which can be considered nece
 @@ Phenotype file must be formatted as mentioned in regenie Documentation see below for example @@
 @@ By default Step 2 inputs (imputed/Exome/CNV files) are unfiltered, such step should be taken before this pipeline @@
 @@ Commonly, depending on the naming structure within VCF, the sample naming might differ from the phenotype/covariate file, consider using the '-double-id/--const-fid/--id-delim' plink2 options @@
+@@ When working with imputed data Regenies's Step 1 preparation is performed with genotype-array data while Step 2 is imputed data @@
 ```
 ![workflow diagram](workflow.png)
 
@@ -58,7 +63,7 @@ tested with singularity pull docker://ghcr.io/rgcgithub/regenie/regenie:v3.0.1.g
 
 1) At Minimum, change declaration of the following variables within the Common_LDpruned_variant.config file : 
 
-* `VCF_files` -- full path to your input files ( Genotyped-array files if possible )
+* `VCF_files` -- full path to your input files (Genotyped-array files if working with imputed data, called WGS file appropriate )
 * `lcr_regions` -- low complexity region bed file, verify that the declaration uses the same genome build (denoted by the option name)
 * `ld_regions` -- long-range high LD region, verify that the declaration uses the same genome build (denoted by the option name)
 * `plink2_exec` -- path to plink executable or 'plink2' if already in your $PATH
