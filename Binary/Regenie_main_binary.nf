@@ -1,63 +1,56 @@
-// TO DO : Burden/gene testing
-
-process chunk_phenotype {
-  label "chunk"
-  executor "local"
-  cache "lenient"
-
-  // Aim :  Per phenotype block parallelisation
-    
-  input :
-  file pheno_file from Channel.fromPath(params.pheno_file) // phenotype file will be staged (usually with hard-link) to the work directory
-
-  output:
-  file "chunk_*_phe.txt" into chunks_phenotypes mode flatten
+process CHUNK_PHENOTYPE {
+  label 'chunk'
+  executor 'local'
+  cache 'lenient'
   
+  input:
+  path pheno_file
+  
+  output:
+  path "chunk_*_phe.txt"
+
   publishDir "${params.OutDir}/chunked_pheno", pattern: "chunk_*_phe.txt", mode: "copy"
 
+  script:
   """
-  # make sure phenotype file is tab-delimited
-  cat ${pheno_file} | tr " " "\t" > temp_pheno_file.txt  
-  
-  Nb_PHENO=\$((\$(head -n 1 temp_pheno_file.txt | wc -w ) - 2)) 
-  val=\$((\$Nb_PHENO/${params.PheStep}))
-  mod=\$((\$Nb_PHENO%${params.PheStep}))
-  if [[ \$val > 0 ]]; then
-    for ((Q=1;Q<=\$val;Q++)); do
-      cut -f 1,2,\$((( \$Q - 1) * ${params.PheStep} + 3 ))-\$(((\$Q * ${params.PheStep}) + 2)) temp_pheno_file.txt > chunk_\${Q}_phe.txt
-    done
-    if [[ \$mod != 0 ]]; then
-    	cut -f 1,2,\$((( \$Q - 1) * ${params.PheStep} + 3 ))-\$(\$Nb_PHENO + 3) temp_pheno_file.txt > chunk_\${Q}_phe.txt
+    # make sure phenotype file is tab-delimited
+    cat ${pheno_file} | tr " " "\t" > temp_pheno_file.txt  
+
+    Nb_PHENO=\$((\$(head -n 1 temp_pheno_file.txt | wc -w ) - 2)) 
+    val=\$((\$Nb_PHENO/${params.PheStep}))
+    mod=\$((\$Nb_PHENO%${params.PheStep}))
+    if [[ \$val > 0 ]]; then
+        for ((Q=1;Q<=\$val;Q++)); do
+            cut -f 1,2,\$((( \$Q - 1) * ${params.PheStep} + 3 ))-\$(((\$Q * ${params.PheStep}) + 2)) temp_pheno_file.txt > chunk_\${Q}_phe.txt
+        done
+        if [[ \$mod != 0 ]]; then
+            cut -f 1,2,\$((( \$Q - 1) * ${params.PheStep} + 3 ))-\$(\$Nb_PHENO + 3) temp_pheno_file.txt > chunk_\${Q}_phe.txt
+        fi
+    else
+        cp temp_pheno_file.txt chunk_1_phe.txt
     fi
-  else
-    cp temp_pheno_file.txt chunk_1_phe.txt
-  fi
   """
 }
 
-
-//____________________________________STEP 1__________________________________________
-process step1_l0 {
-  label "STEP_1_0"
-  cache "lenient"
-  scratch false
-  
-  //Aim : Regenie parallelisation set-up
+process STEP1_L0 {
+  label 'STEP_1_0'
+  cache 'lenient'
+  scratch true
 
   input:
-  tuple val(pheno_chunk_no), file(pheno_chunk), file(genotypes_file), file(sample_file), file(additional_file) from chunks_phenotypes.map { f -> [f.getBaseName().split('_')[1], f] }.combine(Channel.fromPath(params.genotypes_file).map(f -> f.getExtension() == "pgen" ? [f, file("${f.getParent()}/${f.getBaseName()}.psam"), file("${f.getParent()}/${f.getBaseName()}.pvar")] : [f, file("${f.getParent()}/${f.getBaseName()}.sample"), ""]))
-  each file(covar_file) from Channel.fromPath(params.covar_file)
-
+  tuple val(pheno_chunk_no), path(pheno_chunk), path(genotypes_file), path(sample_file), path(additional_file)
+  each path(covar_file)
 
   output:
-  tuple val(pheno_chunk_no), file(pheno_chunk), file("fit_bin${pheno_chunk_no}.master"), file("fit_bin${pheno_chunk_no}_*.snplist") into step1_l0_split mode flatten
-  file "*.log" into step1_l0_logs
+  tuple val(pheno_chunk_no), path(pheno_chunk), path("fit_bin${pheno_chunk_no}.master"), path("fit_bin${pheno_chunk_no}_*.snplist"), emit: step1_l0
+  path "*.log", emit: step1_l0_logs
 
-  publishDir "${params.OutDir}/step1_l0_logs", pattern: "*.log", mode: "copy"
+  publishDir "${params.OutDir}/step1_l0/step1_l0_logs", pattern: "*.log", mode: "copy"
+  publishDir "${params.OutDir}/step1_l0/step1_l0_${pheno_chunk_no}", pattern: "fit_bin${pheno_chunk_no}_*.snplist", mode: "copy"
 
-
+  script:
   """
-  if [ ${genotypes_file.getExtension()} = "pgen" ]; then
+if [ ${genotypes_file.getExtension()} = "pgen" ]; then
      input="--pgen ${genotypes_file.getBaseName()}"
   else
      input="--bgen ${genotypes_file} --sample ${sample_file}"
@@ -87,24 +80,23 @@ process step1_l0 {
   """
 }
 
-
-process step_1_l1 {
-  label "STEP_1_1"
-  cache "lenient"
+process STEP_1_L1 {
+  label 'STEP_1_1'
+  cache 'lenient'
   scratch false
 
-// Aim : Parallel Ridge Prediction
-
   input:
-  tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(snplist), file(genotypes_file), file(sample_file), file(additional_file) from step1_l0_split.combine(Channel.fromPath(params.genotypes_file).map(f -> f.getExtension() == "pgen" ? [f, file("${f.getParent()}/${f.getBaseName()}.psam"), file("${f.getParent()}/${f.getBaseName()}.pvar")] : [f, file("${f.getParent()}/${f.getBaseName()}.sample"), ""]))
-  each file(covar_file) from Channel.fromPath(params.covar_file)
+  tuple val(pheno_chunk_no), path(pheno_chunk), path(master), path(snplist),val(run), path(genotypes_file), path(sample_file), path(additional_file)
+  each path(covar_file)
 
   output:
-  tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file("*_l0_Y*") into step_1_l1
-  file "*.log" into step1_l1_logs
- 
-  publishDir "${params.OutDir}/step1_l1_logs", pattern: "*.log", mode: "copy"
+  tuple val(pheno_chunk_no), path(pheno_chunk), path(master),path("*_l0_Y*"), emit: step_1_l1_out
+  path "*.log", emit: step1_l1_logs
 
+  publishDir "${params.OutDir}/step1_l1/step1_l1_logs", pattern: "*.log", mode: "copy"
+  publishDir "${params.OutDir}/step1_l1/step1_l1_chunk_${pheno_chunk_no}/", pattern: "*_l0_Y*", mode: "copy"
+
+  script:
   """
   if [ ${genotypes_file.getExtension()} = "pgen" ]; then
      input="--pgen ${genotypes_file.getBaseName()}"
@@ -119,7 +111,8 @@ process step_1_l1 {
   fi
 
 
-  i=${snplist.getSimpleName().split('_')[2].replaceFirst('^job', '')}
+  i=${run}
+  echo \$i
   regenie \
     --step 1 \
     --loocv \
@@ -129,32 +122,30 @@ process step_1_l1 {
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
     \${input} \
-    --out fit_bin_${pheno_chunk_no}_\${i} \
+    --out \${i} \
     --run-l0 ${master},\${i} \
     --threads ${params.Threads_S_11} \
     --lowmem
   """
 }
 
-
-process step_1_l2 {
-  label "STEP_1_2"
-  cache "lenient"
+process STEP_1_L2 {
+  label 'STEP_1_2'
+  cache 'lenient'
   scratch false
 
-// Aim : Gobal Prediction
-
   input:
-  tuple val(pheno_chunk_no), file(pheno_chunk), file(master), file(predictions), file(genotypes_file), file(sample_file), file(additional_file) from step_1_l1.groupTuple(by: 0).map{ t -> [t[0], t[1][0], t[2][0], t[3].flatten()] }.combine(Channel.fromPath(params.genotypes_file).map(f -> f.getExtension() == "pgen" ? [f, file("${f.getParent()}/${f.getBaseName()}.psam"), file("${f.getParent()}/${f.getBaseName()}.pvar")] : [f, file("${f.getParent()}/${f.getBaseName()}.sample"), ""]))
-  each file(covar_file) from Channel.fromPath(params.covar_file)
+  tuple val(pheno_chunk_no), path(pheno_chunk), path(master),path(predictions), path(genotypes_file), path(sample_file), path(additional_file)
+  each path(covar_file)
 
-  output:       
-  tuple val(pheno_chunk_no), file(pheno_chunk), file("fit_bin${pheno_chunk_no}_loco_pred.list"), file("*.loco.gz") into step1_l2
-  file "*.log" into step1_l2_logs
+  output:
+  tuple val(pheno_chunk_no), path(pheno_chunk), path("fit_bin${pheno_chunk_no}_loco_pred.list"), path("*.loco.gz"), emit: step1_l2_out
+  path "*.log", emit: step1_l2_logs
 
-  publishDir "${params.OutDir}/step1_l2_logs", pattern: "*.log", mode: "copy"
-  
-
+  publishDir "${params.OutDir}/step1_l2/step1_l2_chunk_${pheno_chunk_no}", pattern: "*.loco.gz", mode: "copy"
+  publishDir "${params.OutDir}/step1_l2/step1_l2_chunk_${pheno_chunk_no}", pattern: "fit_bin${pheno_chunk_no}_loco_pred.list", mode: "copy"
+  publishDir "${params.OutDir}/step1_l2/logs", pattern: "*.log", mode: "copy"
+  script:
   """
   if [ ${genotypes_file.getExtension()} = "pgen" ]; then
      input="--pgen ${genotypes_file.getBaseName()}"
@@ -186,22 +177,22 @@ process step_1_l2 {
   --pThresh 0.05 \
     --lowmem
     """
-  }
-
-// _________________________________________STEP2_________________________________________
+}
 
 process chunk_chromosomes {
    cache "lenient"
    scratch false
    executor "local"
    cpus 1
+   label 'SNP_chunk'
 
    input:
-   file variants_file from Channel.fromPath(params.gwas_genotypes_files).map(f -> f.getExtension() == "pgen" ? file("${f.getParent()}/${f.getBaseName()}.pvar") : f + ".bgi")
+   path(variants_file)
 
    output:
-   tuple val("${variants_file.getSimpleName()}"), file("${variants_file.getSimpleName()}_*.txt") into chromosome_chunks mode flatten
-   publishDir "${params.OutDir}/step2_logs", pattern: "*.txt", mode: "copy"
+   path("${variants_file.getSimpleName()}_*.txt"), emit: chromosome_chunks
+
+   publishDir "${params.OutDir}/step2/Variant_Chunk", pattern: "*.txt", mode: "copy"
 
    """
    if [ ${variants_file.getExtension()} = "pvar" ]; then
@@ -213,33 +204,29 @@ process chunk_chromosomes {
 }
 
 
-chromosome_chunks = chromosome_chunks.combine(Channel.fromPath(params.gwas_genotypes_files).map(f -> f.getExtension() == "pgen" ? ["${f.getSimpleName()}", f, file("${f.getParent()}/${f.getBaseName()}.psam"), file("${f.getParent()}/${f.getBaseName()}.pvar")] : ["${f.getSimpleName()}", f, file("${f.getParent()}/${f.getBaseName()}.sample"), f + ".bgi"]), by: 0)
-    
-       
 //___________________STEP 2 main ____________________________
 
 process step_2 {
   label "Asscociation_testing"
   cache "lenient"
-  scratch true
-  time { 12.hour * task.attempt }
-  errorStrategy { task.exitStatus == 140 ? 'retry' : 'terminate' }
-  maxRetries 3
+  scratch false
 
 
 //Aim : Association testing
 
   input:
-  tuple val(pheno_chunk_no), file(pheno_chunk), file(loco_pred_list), file(loco_pred), val(simple_name), file(chromosome_chunk), file(gwas_genotypes_file), file(samples_file), file(variants_file) from step1_l2.combine(chromosome_chunks)
-  each file(covar_file) from Channel.fromPath(params.covar_file)
+  tuple val(pheno_chunk_no), path(pheno_chunk), path(loco_pred_list), path(loco_pred), val(simple_name), path(chromosome_chunk), path(gwas_genotypes_file), path(samples_file), path(variants_file)
+  each path(covar_file)
   
   output:       
-  file("*.regenie.gz") into summary_stats mode flatten
-  file "*.log" into step2_logs
+  path("*.regenie.gz"), emit: summary_stats
+  path("*.log"), emit: step2_logs
   path("*.list"), optional: true
   
-  publishDir "${params.OutDir}/step2_logs", pattern: "*.log", mode: "copy"
-  publishDir "${params.OutDir}/step2_logs", pattern: "*.list", mode: "copy"
+
+  publishDir "${params.OutDir}/step2/result/", pattern: "*.regenie.gz", mode: "copy"
+  publishDir "${params.OutDir}/step2/logs", pattern: "*.log", mode: "copy"
+
   """
   if [ ${gwas_genotypes_file.getExtension()} = "pgen" ]; then
      input="--pgen ${gwas_genotypes_file.getBaseName()}"
@@ -279,24 +266,64 @@ process step_2_merge {
   label "Merging"
   cache "lenient"
   scratch false
-  time { 2.hour * task.attempt }
-  errorStrategy { task.exitStatus == 140 ? 'retry' : 'terminate' }
-  maxRetries 3
 
   //Aim : Natural Order Concatenated Association file (1 per phenotype)
 
   input:
-  tuple val(pheno_name), file(summary) from summary_stats.map{ t -> [t.baseName.split("_assoc_")[1], t] }.groupTuple()
+  tuple val(pheno_name), path(summary)
 
   output:       
-  file "*.txt.gz" into summary_stats_final
+  path "*.txt.gz", emit: summary_stats_final
   
-  publishDir "${params.OutDir}/step2_result", pattern: "*.txt.gz", mode: "copy"
+
+  publishDir "${params.OutDir}/step2/summary", pattern: "*.txt.gz", mode: "copy"
 
   """
   gzip -dc `find . -name "*.regenie.gz" -print -quit` | head -n1 | gzip -c > ${pheno_name}.txt.gz
-  for f in `find . -name "*.regenie.gz" | sort -V`; do 
+  for f in `find . -name "*.regenie.gz" | sort -V`; do
      gzip -dc \$f; 
   done | grep -v "^CHROM" | gzip -c >> ${pheno_name}.txt.gz
   """
 }
+
+workflow {
+  //Input files
+     Common_LD_pruned_variant = Channel.fromPath(params.genotypes_file).map(f -> f.getExtension() == "pgen" ? [f, file("${f.getParent()}/${f.getBaseName()}.psam"), file("${f.getParent()}/${f.getBaseName()}.pvar")] : [f, file("${f.getParent()}/${f.getBaseName()}.sample"), ""])
+     GWAS_variant = Channel.fromPath(params.gwas_genotypes_files).map(f -> f.getExtension() == "pgen" ? ["${f.getSimpleName()}".split('_')[0], f, file("${f.getParent()}/${f.getBaseName()}.psam"), file("${f.getParent()}/${f.getBaseName()}.pvar")] : ["${f.getSimpleName()}".split('_')[1], f, file("${f.getParent()}/${f.getBaseName()}.sample"), f + ".bgi"])
+     Covariant=Channel.fromPath(params.covar_file)
+
+  //chunking Phenotype
+     chunks = CHUNK_PHENOTYPE(Channel.fromPath(params.pheno_file))
+  //chunking SNP
+     SNP_chunks = chunk_chromosomes(Channel.fromPath(params.gwas_genotypes_files).map(f -> f.getExtension() == "pgen" ? file("${f.getParent()}/${f.getBaseName()}.pvar") : f + ".bgi"))
+     S=SNP_chunks.chromosome_chunks.flatten()
+     T=S.map(t -> ["${t.getSimpleName()}".split('_')[0],t])
+     SNP_chunk = T.combine(GWAS_variant, by: 0)
+
+  //Regenie Step 1
+     step1_L0_input = chunks.flatten().map { f -> [f.getBaseName().split('_')[1], f] }
+
+     S1_L0=STEP1_L0(step1_L0_input.combine(Common_LD_pruned_variant), Covariant )
+  
+  // Divides each S1_L0 SNP list into a process
+  // Includes the modeling data
+     jobs_S1=Channel.from( 1..params.njobs )
+     S1_L1_input=S1_L0.step1_l0.combine(jobs_S1)
+     S1_L1=STEP_1_L1(S1_L1_input.combine(Common_LD_pruned_variant), Covariant)
+
+  //Regroup the output of S1_L1 per phenotype_chuck
+     STEP_1_L1_reformated = S1_L1.step_1_l1_out.groupTuple(by: 0).map{ t -> [t[0], t[1][0], t[2][0], t[3].flatten()] }
+
+     S1 = STEP_1_L2(STEP_1_L1_reformated.combine(Common_LD_pruned_variant), Covariant)
+
+  // Regenie Step 2
+     S2_input = S1.step1_l2_out.combine(SNP_chunk)
+
+    S2 = step_2(S2_input,Covariant)
+    S2.summary_stats.flatten().map{ t -> [t.baseName.split('.')] }.view()
+    S2_groups = S2.summary_stats.flatten().map{ t -> [t.baseName.split('_')[5],t] }.groupTuple()
+  // Step 2 Merged
+     S2_Merged = step_2_merge(S2_groups)
+
+}
+
