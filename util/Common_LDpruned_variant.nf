@@ -1,6 +1,43 @@
 //Description : From vcf files (with indexes) to a single bgen file with custom filter
 
-// Typicall VCF/BCF/PGEN/BGEN files are already split by chromosome. We make use of this, and process each of them in parallel.
+// Typicall VCF/BCF files are already split by chromosome. We make use of this, and process each of them in parallel.
+
+process concat_bed {
+  cache "lenient"
+  //scratch true
+
+  input:
+  path(LCR_bed)
+  path(LD_bed)
+
+  output:
+  path "exclude_bed.gz",  emit: exclude_bed
+
+  """
+ cat ${LCR_bed} ${LD_bed} > exclude_bed.gz
+
+  """
+
+}
+
+process hapmap_bed {
+  cache "lenient"
+  //scratch true
+
+  input:
+  path(hapmap)
+  path(LD_bed)
+
+  output:
+  path "include.bed",  emit: include_bed
+
+  """
+ ${params.bedtools_exec} subtract -a ${hapmap} -b ${LD_bed} > include.bed
+
+  """
+
+}
+
 
 process filter_by_chrom_VCF_BCF {
   cache "lenient"
@@ -8,8 +45,7 @@ process filter_by_chrom_VCF_BCF {
 
   input:
   path vcf // accepts VCF or BCF
-  each path(LCR_bed)
-  each path(LD_bed)
+  each path(bed)
   
   output:
   path "${vcf.getBaseName()}.common_independent_snps.*",  emit: filtered_by_chrom
@@ -21,16 +57,20 @@ process filter_by_chrom_VCF_BCF {
   else
      plink_import_option="--vcf ${vcf} ${params.name}"
   fi
+  
+  if [ ${bed} = "exclude_bed.gz" ] ; then 
+     plink_bed_option="--exclude bed0 ${bed}"
+  else 
+     plink_bed_option="--extract bed0 ${bed}"
+  fi
 
-  cat ${LCR_bed} ${LD_bed} > exclude_bed.gz
   ${params.plink2_exec} \${plink_import_option} \
     --maf ${params.maf} \
     --geno ${params.geno} \
-    --mind ${params.mind} \
     --hwe ${params.HWE} \
     --min-alleles 2 \
     --max-alleles 2 \
-    --exclude bed0 exclude_bed.gz \
+    \${plink_bed_option} \
     --snps-only \
     --set-all-var-ids '@:#:\$r:\$a' \
     --indep-pairwise 1000 100 ${params.Rsq} \
@@ -52,9 +92,8 @@ process filter_by_chrom_pgen_bgen {
 
   input:
   tuple path(input), path(sample_file), path(additional_file)
-  each path(LCR_bed) 
-  each path(LD_bed) 
-
+  each path(bed)
+  
   output:
   path "${input.getBaseName()}.common_independent_snps.*", emit: filtered_by_chrom
 
@@ -66,15 +105,20 @@ process filter_by_chrom_pgen_bgen {
      plink_import_option="--bgen ${input} --sample ${sample_file}"
   fi
 
+  if [ ${bed} = "exclude_bed.gz" ]; then
+     plink_bed_option="--exclude bed0 ${bed}"
+  else
+     plink_bed_option="--extract bed0 ${bed}"
+  fi
+
   cat ${LCR_bed} ${LD_bed} > exclude_bed.gz
   ${params.plink2_exec} \${plink_import_option} \
     --maf ${params.maf} \
     --geno ${params.geno} \
     --hwe ${params.HWE} \
-    --mind ${params.mind} \
     --min-alleles 2 \
     --max-alleles 2 \
-    --exclude bed0 exclude_bed.gz \
+    \${plink_bed_option} \
     --snps-only \
     --set-all-var-ids '@:#:\$r:\$a' \
     --indep-pairwise 1000 100 ${params.Rsq} \
@@ -121,16 +165,26 @@ process merge_chroms {
 
 
 workflow {
+	hapmap = Channel.fromPath("${workflow.projectDir}/Low_complexity_regions/${params.hapmap}.bed.gz",checkIfExists:true)
 	geno = Channel.fromPath(params.genotypes_file,checkIfExists:true)
-	LCR_bed = Channel.fromPath("${workflow.projectDir}/Low_complexity_regions/${params.lcr_regions}.bed.gz")
 	LD_bed = Channel.fromPath("${workflow.projectDir}/Low_complexity_regions/${params.ld_regions}.bed.gz")
 	println(params.genotypes_file[-4..-1]);
+	if (params.hapmap == "") {
+	LCR_bed = Channel.fromPath("${workflow.projectDir}/Low_complexity_regions/${params.lcr_regions}.bed.gz")
+	concat_bed=concat_bed(LCR_bed,LD_bed)
+	bed = concat_bed.exclude_bed
+	} else {
+	if (params.lcr_regions == ""){
+	hap_bed=hapmap_bed(hapmap,LD_bed)
+	bed = hap_bed.include_bed
+	} else {error "HapMap option and Low complexity regions filter are mutually exclusive, set one to an empty string"}
+	}
 	if(params.genotypes_file[-4..-1] == "pgen" || params.genotypes_file[-4..-1] == "bgen"){
 		pbgen = geno.map(f -> f.getExtension() == "pgen" ? [f, file("${f.getParent()}/${f.getBaseName()}.psam"), file("${f.getParent()}/${f.getBaseName()}.pvar")] : [f, file("${f.getParent()}/${f.getBaseName()}.sample"), ""]);
-		filtered_by_chrom = filter_by_chrom_pgen_bgen(pbgen, LCR_bed, LD_bed)
+		filtered_by_chrom = filter_by_chrom_pgen_bgen(pbgen, bed)
 		}
 	else if(params.genotypes_file[-3..-1] == "bcf" || params.genotypes_file[-3..-1] == "vcf" || params.genotypes_file[-6..-1] == "vcf.gz" || params.genotypes_file[-6..-1] == "bcf.gz"){
-		filtered_by_chrom = filter_by_chrom_VCF_BCF(geno, LCR_bed, LD_bed)
+		filtered_by_chrom = filter_by_chrom_VCF_BCF(geno, bed)
 
 	}
 	else{
