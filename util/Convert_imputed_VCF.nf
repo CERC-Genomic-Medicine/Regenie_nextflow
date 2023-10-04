@@ -5,10 +5,10 @@ process convert {
   //scratch true
   
   input :
-  tuple val(name), file(vcf) from Channel.fromPath(params.VCF_files).map { vcf -> [vcf.getName().replaceAll('.vcf.gz$|.bcf$', ''), vcf ] } // accepts VCF or BCF
+  tuple val(name), path(vcf)
 
   output:
-  file("${name}.${params.vcf_field}.*") into PGEN
+  path("${name}.${params.vcf_field}.*")
 
   publishDir "${params.OutDir}/", pattern: "${name}.${params.vcf_field}.*", mode: "copy"
  
@@ -16,13 +16,13 @@ process convert {
   if (params.format == "PGEN")
      """
      if [ ${vcf.getExtension()} = "bcf" ]; then
-        plink_import_option="--bcf ${vcf}"
+        plink_import_option="--bcf ${vcf} ${params.name}"
      else
-        plink_import_option="--vcf ${vcf}"
+        plink_import_option="--vcf ${vcf} ${params.name}"
      fi
 
      if [ ${params.vcf_field} != "GT" ]; then
-        plink_import_option="\${plink_import_option} dosage=${params.vcf_field}"
+        plink_import_option="\${plink_import_option} dosage=${params.vcf_field} ${params.name}"
      fi
      
      ${params.plink2_exec} \${plink_import_option} --max-alleles 2 --new-id-max-allele-len 8000 --set-all-var-ids '@:#:\$r:\$a' --make-pgen erase-phase --out ${name}.${params.vcf_field}
@@ -43,3 +43,10 @@ process convert {
      error "Invalid format: ${params.format}"
 }
 
+
+workflow {
+input_vcf=Channel.fromPath(params.VCF_files).map { vcf -> [vcf.getName().replaceAll('.vcf.gz$|.bcf$', ''), vcf ] } // accepts VCF or BCF
+
+convert(input_vcf)
+
+}
