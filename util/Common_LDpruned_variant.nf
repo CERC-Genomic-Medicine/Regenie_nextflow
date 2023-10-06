@@ -165,7 +165,6 @@ process merge_chroms {
 
 
 workflow {
-	hapmap = Channel.fromPath("${workflow.projectDir}/Low_complexity_regions/${params.hapmap}.bed.gz",checkIfExists:true)
 	geno = Channel.fromPath(params.genotypes_file,checkIfExists:true)
 	LD_bed = Channel.fromPath("${workflow.projectDir}/Low_complexity_regions/${params.ld_regions}.bed.gz")
 	println(params.genotypes_file[-4..-1]);
@@ -175,6 +174,7 @@ workflow {
 	bed = concat_bed.exclude_bed
 	} else {
 	if (params.lcr_regions == ""){
+	hapmap = Channel.fromPath("${workflow.projectDir}/Low_complexity_regions/${params.hapmap}.bed.gz",checkIfExists:true)
 	hap_bed=hapmap_bed(hapmap,LD_bed)
 	bed = hap_bed.include_bed
 	} else {error "HapMap option and Low complexity regions filter are mutually exclusive, set one to an empty string"}
