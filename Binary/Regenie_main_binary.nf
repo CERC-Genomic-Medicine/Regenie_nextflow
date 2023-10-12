@@ -249,7 +249,7 @@ process step_2 {
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
     \${input} \
-    --out "${pheno_chunk_no}_${chromosome_chunk.getSimpleName()}_assoc" \
+    --out "${pheno_chunk_no}_${chromosome_chunk.getSimpleName()}_assoc." \
     --pred ${loco_pred_list} \
     --af-cc  --bt \
   --firth --approx  ${params.Binairy}\
@@ -321,7 +321,7 @@ workflow {
 
     S2 = step_2(S2_input,Covariant)
     S2.summary_stats.flatten().map{ t -> [t.baseName.split('.')] }.view()
-    S2_groups = S2.summary_stats.flatten().map{ t -> [t.baseName.split('_')[5],t] }.groupTuple()
+    S2_groups = S2.summary_stats.flatten().map{ t -> [t.baseName.split('.')[1],t] }.groupTuple()
   // Step 2 Merged
      S2_Merged = step_2_merge(S2_groups)
 
