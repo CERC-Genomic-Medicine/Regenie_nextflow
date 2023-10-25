@@ -120,11 +120,11 @@ or
 
 
 * `genotypes_file` -- Full path to the .pgen or .bgen files containing LD-pruned set of variants
-* `gwas_genotypes_files` -- Full path to the .pgen or .bgen variant file for Single-variant association testing 
+* `gwas_genotypes_files` -- Full path to the .pgen or .bgen variant file for Single-variant association testing  ** Pattern filename [unique]_\* **
 * `PheStep` -- Number of phenotype to be analyzed in each job (i.e. total number of phenotypes / PheStep = job parallelization level)
 * `njobs` -- Number of jobs over which part of the first step of regenie is distributed
 * `SnpStep` --  number of SNPs to be examined in each job instances of regenies second step (i.e. total number of SNPs / SnpStep = nb jobs @ second step)
-* `pheno_file` -- phenotype file tab or spaces delimited (see below)
+* `pheno_file` -- phenotype file tab or spaces delimited (see below) ** Phenotypes names cannot containt '.' **
 * `covar_file` -- covariate file tab delimited (see below)
 * `CatCovar` -- Comma separated Categorical Variables
 * `container` -- Path to image of regenie
