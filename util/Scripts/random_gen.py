@@ -12,29 +12,31 @@ parser.add_argument('--ncol', dest='ncol', type=int, help='number of column expe
 
 parser.add_argument('--ID', dest='Input', type=str, help='file with individuals') ## FID and IID column of .psam or the like
 
-parser.add_argument('--out', dest='output', type=str, help='output')
+parser.add_argument('--out', dest='output', default='output', type=str, help='output')
 
-parser.add_argument('--prefix', dest='pre', type=str, help='prefix to each column')
+parser.add_argument('--prefix', dest='pre',default='', type=str, help='prefix to each column')
+
+parser.add_argument('--binary', dest='binary', action='store_true', required = False, help = 'Flag to produce binary product instead of continuous')
+
 
 args = parser.parse_args()
 
-
-In=pd.read_table(args.Input)
-
-# Create header
-out= list()
-header=["FID", "IID"]
-for y in range(0,args.ncol):
-	header.append(args.pre + str(y))
-#fill each line
-for i in range(0,len(In.index)):
-    line = list()
-    for a in range(0,args.ncol):
-        rando=random.random()*5
-        line.append(rando)
-    out.append(line)
-df=pd.DataFrame(data=out)
-Q=pd.concat([In.iloc[: , :2], df], axis=1, ignore_index=True)
-Q.columns = header
-#write ouput
-Q.to_csv(args.output, index=False, sep='\t',header=True)
+with open(args.Input,'rt') as f, open(args.output,'wt') as out:
+    header=["FID", "IID"]
+    for y in range(0,args.ncol):
+        header.append(args.pre + str(y))
+    out.write('\t'.join(header)+'\n')
+    for line in f :
+        record = line.strip()
+        if ' ' in record :
+            record = record.split(" ")[0:2]
+        if '\t' in record:
+            record = record.split('\t')[0:2]
+        if record[0] == 'FID' or record[0] == '#FID':
+            continue
+        for a in range(0,args.ncol):
+            rando=random.random()*5
+            if args.binary:
+                rando = '1' if rando >2.5 else '0'
+            record.append(str(rando))
+        out.write('\t'.join(record)+'\n')
