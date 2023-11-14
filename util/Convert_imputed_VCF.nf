@@ -16,16 +16,16 @@ process convert {
   if (params.format == "PGEN")
      """
      if [ ${vcf.getExtension()} = "bcf" ]; then
-        plink_import_option="--bcf ${vcf} ${params.name}"
+        plink_import_option="--bcf ${vcf}"
      else
-        plink_import_option="--vcf ${vcf} ${params.name}"
+        plink_import_option="--vcf ${vcf}"
      fi
 
      if [ ${params.vcf_field} != "GT" ]; then
-        plink_import_option="\${plink_import_option} dosage=${params.vcf_field} ${params.name}"
+        plink_import_option="\${plink_import_option} dosage=${params.vcf_field}"
      fi
      
-     ${params.plink2_exec} \${plink_import_option} --max-alleles 2 --new-id-max-allele-len 8000 --set-all-var-ids '@:#:\$r:\$a' --make-pgen erase-phase --out ${name}.${params.vcf_field}
+     ${params.plink2_exec} \${plink_import_option} ${params.name} --max-alleles 2 --new-id-max-allele-len 8000 --set-all-var-ids '@:#:\$r:\$a' --make-pgen erase-phase --out ${name}.${params.vcf_field}
      """
 
   else if (params.format == "BGEN")
