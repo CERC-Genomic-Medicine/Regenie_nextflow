@@ -1,9 +1,5 @@
 # Regenie Parallelization Pipeline
 
-To be done :  
-* Integration of the burden testing branch
-
-
 ## About
 
 Pipeline to perform further parallelize [regenie](https://rgcgithub.github.io/regenie/) (Mbatchou, J., Barnard, L., Backman, J. _et al._ ) on Imputed/Exome/CNV/WGS data, to evaluate genome association with binary and continuous phenotype. Currently does not support burden testing or interaction tests (to be implemented). Regenie is a tool to perform genome-wide association testing in a fast and memory efficient capacity, this pipeline further parallelizes the process.
