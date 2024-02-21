@@ -69,7 +69,7 @@ if [ ${genotypes_file.getExtension()} = "pgen" ]; then
     --gz \
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
-    \${input} \
+    \${input} ${params.rint}\
     --out fit_bin_${pheno_chunk_no} \
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
@@ -108,7 +108,7 @@ process STEP_1_L1 {
   fi
 
 
-  i=${run}
+  i=${run}-1
   echo \$i
   regenie \
     --step 1 \
@@ -117,7 +117,7 @@ process STEP_1_L1 {
     --gz \
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
-    \${input} \
+    \${input} ${params.rint}\
     --out \${i} \
     --run-l0 ${master},\${i} \
     --threads ${params.Threads_S_11} \
@@ -162,7 +162,7 @@ process STEP_1_L2 {
     --gz \
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
-    \${input} \
+    \${input} ${params.rint}\
     --out fit_bin${pheno_chunk_no}_loco \
     --run-l1 ${master} \
     --keep-l0 \
@@ -241,7 +241,7 @@ process step_2 {
     --bsize ${params.Bsize} \
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
-    \${input} \
+    \${input} ${params.rint}\
     --out "${pheno_chunk_no}_${chromosome_chunk.getSimpleName()}_assoc." \
     --pred ${loco_pred_list} \
     --extract ${chromosome_chunk} \
@@ -298,6 +298,7 @@ workflow {
   // Divides each S1_L0 SNP list into a process
   // Includes the modeling data
      jobs_S1=Channel.from( 1..params.njobs )
+     jobs_S1.view()
      S1_L1_input=S1_L0.step1_l0.combine(jobs_S1)
      S1_L1=STEP_1_L1(S1_L1_input.combine(Common_LD_pruned_variant), Covariant)
 
