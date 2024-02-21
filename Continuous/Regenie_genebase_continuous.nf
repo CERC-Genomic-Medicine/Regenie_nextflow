@@ -69,7 +69,7 @@ if [ ${genotypes_file.getExtension()} = "pgen" ]; then
     --gz \
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
-    \${input} \
+    \${input} ${params.rint} \
     --out fit_bin_${pheno_chunk_no} \
     --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
     --threads ${params.Threads_S_10} \
@@ -117,7 +117,7 @@ process STEP_1_L1 {
     --gz \
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
-    \${input} \
+    \${input} ${params.rint}\
     --out \${i} \
     --run-l0 ${master},\${i} \
     --threads ${params.Threads_S_11} \
@@ -162,7 +162,7 @@ process STEP_1_L2 {
     --gz \
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
-    \${input} \
+    \${input} ${params.rint}\
     --out fit_bin${pheno_chunk_no}_loco \
     --run-l1 ${master} \
     --keep-l0 \
@@ -269,7 +269,7 @@ process step_2 {
     --bsize ${params.Bsize} \
     --phenoFile ${pheno_chunk} \
     --covarFile ${covar_file} \$CovarCat \
-    \${input} \
+    \${input} ${params.rint}\
     --set-list ${set}\
     --anno-file ${annot}\
     --out "${pheno_chunk_no}_${gene_chunk.getSimpleName()}_assoc." \
