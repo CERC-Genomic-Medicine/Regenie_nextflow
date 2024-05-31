@@ -337,7 +337,7 @@ workflow {
      S1_L1=STEP_1_L1(S1_L1_input.combine(Common_LD_pruned_variant), Covariant)
 
   //Regroup the output of S1_L1 per phenotype_chuck
-     STEP_1_L1_reformated = S1_L1.step_1_l1_out.groupTuple(by: 0, sort : true).map{ t -> [t[0], t[1][0], t[2][0], t[3].flatten()] }
+     STEP_1_L1_reformated = S1_L1.step_1_l1_out.groupTuple(by: 0).map{ t -> [t[0], t[1][0], t[2][0], t[3].flatten()] }
 
      S1 = STEP_1_L2(STEP_1_L1_reformated.combine(Common_LD_pruned_variant), Covariant)
 
@@ -346,7 +346,7 @@ workflow {
 
    S2 = step_2(S2_input,set,Channel.fromPath(params.annotations),Channel.fromPath(params.mask),Covariant)
     S2.summary_stats.flatten().map{ t -> [t.baseName.split('.')] }.view()
-    S2_groups = S2.summary_stats.flatten().map{ t -> [t.baseName.tokenize('.')[1],t] }.groupTuple(sort : true)
+    S2_groups = S2.summary_stats.flatten().map{ t -> [t.baseName.tokenize('.')[1],t] }.groupTuple()
   // Step 2 Merged
      S2_Merged = step_2_merge(S2_groups)
 
