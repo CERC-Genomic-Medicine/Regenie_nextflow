@@ -312,7 +312,7 @@ workflow {
      S1_L1=STEP_1_L1(S1_L1_input.combine(Common_LD_pruned_variant), Covariant)
 
   //Regroup the output of S1_L1 per phenotype_chuck
-     STEP_1_L1_reformated = S1_L1.step_1_l1_out.groupTuple(by: 0).map{ t -> [t[0], t[1][0], t[2][0], t[3].flatten()] }
+     STEP_1_L1_reformated = S1_L1.step_1_l1_out.groupTuple(by: 0).map{ t -> [t[0], t[1].sort()[0], t[2].sort()[0], t[3].flatten().sort{it.name}] }
 
      S1 = STEP_1_L2(STEP_1_L1_reformated.combine(Common_LD_pruned_variant), Covariant)
 
