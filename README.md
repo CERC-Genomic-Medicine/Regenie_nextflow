@@ -12,6 +12,11 @@ This implementation does not perform the following, which can be considered nece
 
 By default, BGEN stores non-par region of the X chromosome in a haploid format, while this storage is correct, Regenie's underlying model uses a homozygote diploid format for these regions. To remedie this, we recommend working with PGEN, which by default convert those regions to the expected format.
 
+```diff
+- Important!
+Regenie imputes missing values for quantitative phenotypes, so it's crucial to ensure that the percentage of missing phenotypes remains low and consistent. According to the Regenie paper, the maximum tested threshold for missing phenotypes is 15%.
+```
+
 ## Workflow
 
 ```diff
