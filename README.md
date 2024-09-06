@@ -14,7 +14,7 @@ By default, BGEN stores non-par region of the X chromosome in a haploid format, 
 
 ```diff
 - Important!
-Regenie imputes missing values for quantitative phenotypes, so it's crucial to ensure that the percentage of missing phenotypes remains low and consistent. According to the Regenie paper, the maximum tested threshold for missing phenotypes is 15%.
+Regenie imputes missing values for quantitative phenotypes, so it's crucial to ensure that the percentage of missing phenotypes remains low and consistent. According to the Regenie paper, the maximum tested threshold for missing phenotypes is 15%. (a script is provided util/Scrips/Phenotype_missingness_analysis.py to assess the missingness compatibility of phenotypes)
 ```
 
 ## Workflow
@@ -153,5 +153,6 @@ F2   S2      0.2             0.5
 
 ## Additional Scripts 
 - util/Scripts/random_gen.py (generate random covariate or phenotype)
-- Manhattan_Miami.py (provide Manhattan and/or Miami plot)
+- util/Manhattan_Miami.py (provide Manhattan and/or Miami plot)
 * needs python packages: pandas, matplotlib, argparse and random
+- util/Scrips/Phenotype_missingness_analysis.py (provides an analysis of the missingness compatibility between QT-phenotypes)
