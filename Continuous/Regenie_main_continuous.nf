@@ -242,8 +242,6 @@ process chunk_chromosomes {
    output:
    tuple val("${variants_file.getBaseName()}"), path("${variants_file.getBaseName()}_*.txt")
 
-   //publishDir "${params.OutDir}/step2/Variant_Chunk", pattern: "*.txt", mode: "copy"
-
    """
    if [ ${variants_file.getExtension()} = "pvar" ]; then
       grep -v "^#" ${variants_file} | cut -f3
