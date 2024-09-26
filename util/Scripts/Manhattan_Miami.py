@@ -1,79 +1,165 @@
 #!/usr/bin/env python3
-/*
-* Author: Vincent Chapdelaine <vincent.chapdelaine@mail.mcgill.ca>
-* Version: 1.0
-* Year: 2023
-*/
 
+#
+# Author: Vincent Chapdelaine <vincent.chapdelaine@mail.mcgill.ca>; Daniel Taliun <daniel.taliun@mcgill.ca>
+# Version: 2.0
+# Year: 2024
+#
+
+import gzip
 import pandas as pd
 import numpy as np
-import os
 import matplotlib.pyplot as plt
 import argparse
-from scipy import stats
-from ncls import NCLS
+
 
 argparser = argparse.ArgumentParser(description = 'Script to plot either a Manhattan or Miami plot')
-argparser.add_argument('-i1', metavar = 'name', dest = 'in_file1', type = str, required = True, help = 'Regenie Input to Mahattan/Miami plot')
-argparser.add_argument('-T1', metavar = 'name', dest = 'in_file_Title1', type = str, required = True, help = 'Title of Manhattan plot/Subtitle of Miami plot')
-argparser.add_argument('-T2', metavar = 'name', dest = 'in_file_Title2', type = str, required = False, help = 'Subtitle of Miami plot')
-argparser.add_argument('-i2', metavar = 'name', dest = 'in_file2', type = str, required = False, help = 'Regenie Second Input to Miami plot.')
-argparser.add_argument('-T', metavar = 'name', dest = 'trait', type = str, required = True, help = 'Name of the trait space = \'_\' | base Name of output ')
+argparser.add_argument('-g', '--gwas', metavar = 'file', dest = 'in_gwas_files', type = str, nargs = '+', required = True, help = 'Compressed (gzip) GWAS result file(s) in Regenie format. Specify two files to create a Miami plot.')
+argparser.add_argument('-t', '--title', metavar = 'name', dest = 'in_gwas_titles', type = str, nargs = '+', required = True, help = 'Title(s) for GWAS plots. Specify two titles if you are creating Miami plot e.g.: -t "Type 2 Diabetes in Males" "Type 2 Diabetes in Females"')
+argparser.add_argument('-f', '--min-af', metavar = 'float', dest = 'min_af', type = float, required = False, default = 0.0, help = 'Threshold for the minimal alternate allele frequency (AF). Default: 0.0')
+argparser.add_argument('-q', '--min-imp-quality', metavar = 'float', dest = 'min_info', type = float, required = False, default = 0.0, help = 'Threshold for the minimal imputation quality (INFO or Rsq). Defailt: 0.0') 
+argparser.add_argument('-p', '--max-log-pvalue', metavar = 'float', dest = 'max_log10p', type = float, required = False, default = 100, help = 'Maximal allowed -log_10(pvalue). If this threshold is exceeded, then the -log_10(pvalue) is set to this value. This option is useful only for the visualization purposes to avoid squeezed Manhattan plots due to very extreme P-values. Default: 100.')
+argparser.add_argument('-o', '--output', metavar = 'file', dest = 'out_filename', type = str, required = True, help = 'Output file name. The ".png" suffix will be appended automotically.')
 
 
-plt.rcParams.update({'font.size': 18})
+CHROMOSOME_CODES = dict(
+        [(str(i), np.uint8(i)) for i in range(1, 24)] + 
+        [(f'chr{i}', np.uint8(i)) for i in range(1, 23)] + 
+        [('X', np.uint8(23)), ('chrX', np.uint8(23))]
+    )
 
-def manhattan(Fig, file,inverted,title):
-	df= pd.read_table(file, header=0,sep="\s+",low_memory=False,usecols=['CHROM','LOG10P','GENPOS'])
-	df=df[df['LOG10P']!='TEST_FAIL']
-	df['minuslog10pvalue'] = df['LOG10P'].astype(float)
-	df.loc[df.minuslog10pvalue>11,'minuslog10pvalue'] = 11
-	df["chromosome"]=df["CHROM"]
-	df=df[~df.chromosome.isin(["Y"])]
-	df.chromosome = df.chromosome.astype('category')
-	df.chromosome = df.chromosome.cat.set_categories([ i for i in set(df.chromosome)], ordered=True)
-	df = df.sort_values('chromosome')
-	maxi=0
-	for  i in df.chromosome.unique() :
-		df.loc[df.chromosome==i,'GENPOS']=df.loc[df.chromosome==i,'GENPOS'] + maxi
-		maxi=df.loc[df.chromosome==i,'GENPOS'].max()
-	df['ind'] = df['GENPOS']
-	df_grouped = df.groupby('chromosome')
-	ax = Fig
-	colors = ['black','gray']
-	x_labels = []
-	x_labels_pos = []
-	for num, (name, group) in enumerate(df_grouped):
-		group.plot(kind='scatter', x='ind', y='minuslog10pvalue',color=colors[name % len(colors)], s=9,ax=ax)
-		x_labels.append(name)
-		x_labels_pos.append((group['ind'].max() - (group['ind'].max() - group['ind'].min())/2))
-	ax.set_xticks(x_labels_pos)
-	ax.set_xticklabels(x_labels)
-	# set axis limits
-	ax.set_xlabel('Chromosome')
-	ax.set_ylabel('-'+r'$\log_{10}$' +'(P-value)')
-	ax.set_ylim([0, 12])
-	if inverted :
-		ax.invert_yaxis()
-		ax.xaxis.tick_top()
-		ax.xaxis.set_label_position('top')
-		ax.title.set_text(title)
-	else :
-		ax.title.set_text(title)
-	ax.axhline(y=7.30102999566 , color='r', linestyle='-')
-	ax.title.set_text(title)
+
+SIGNIFICANCE_THRESHOLD = -np.log10(0.05 * 1e-6)
+
+
+def read_regenie_continuous(filename, min_af, min_info, max_log10p):
+    required_columns = ['CHROM', 'GENPOS', 'A1FREQ', 'LOG10P']
+    n_total_entries = 0
+    n_good_entries = 0
+
+    min_af = np.float32(min_af)
+    min_info = np.float32(min_info)
+    max_log10p = np.float16(max_log10p)
+    
+    with gzip.open(filename, 'rt') as ifile:
+        print(f'Scanning {filename}...')
+        header = ifile.readline().rstrip().split(' ')
+        if any(c not in header for  c in required_columns):
+            raise Exception('Required CHROM, GENPOS, A1FREQ, and LOG10P columns are missing from the GWAS header.')
+        chrom_idx = header.index('CHROM')
+        genpos_idx = header.index('GENPOS')
+        a1freq_idx = header.index('A1FREQ')
+        log10p_idx = header.index('LOG10P')
+        if 'INFO' in header:
+            info_idx = header.index('INFO')
+        else:
+            info_idx = None
+        for n, line in enumerate(ifile, 1):
+            if n % 1000000 == 0:
+                print(f'\r{n} records scanned...', end = '', flush = True)
+        print(f'\rDone. {n} records detected.\t\t')
+        
+        chromosomes = np.zeros(n, dtype = np.uint8)
+        positions = np.zeros(n, dtype = np.uint32)
+        minus_log10_pvalues = np.zeros(n, dtype = np.float16) # Use float16 because we do not need precision when visualizing.
+
+    with gzip.open(filename, 'rt') as ifile:
+        print(f'Loading {filename}...')
+        i = 0
+        ifile.readline() # skip header
+        for line in ifile:
+            fields = line.rstrip().split(' ')
+            if fields[chrom_idx] not in CHROMOSOME_CODES:
+                continue
+            if np.float32(fields[a1freq_idx]) < min_af:
+                continue
+            if info_idx is not None and np.float32(fields[info_idx]) < min_info:
+                continue
+            chromosomes[i] = CHROMOSOME_CODES[fields[chrom_idx]]
+            positions[i] = np.uint32(fields[genpos_idx])
+            minus_log10_pvalue = np.float16(fields[log10p_idx])
+            minus_log10_pvalues[i] = min(minus_log10_pvalue, max_log10p)
+            i += 1
+            if i % 1000000 == 0:
+                print(f'\r{i} records loaded...', end = '', flush = True)
+        print(f'\rDone. {i} records loaded (AF => {min_af}; INFO >= {min_info}).\t\t')
+    if i < chromosomes.size:
+        chromosomes.resize(i)
+        positions.resize(i)
+        minus_log10_pvalues.resize(i)
+    return chromosomes, positions, minus_log10_pvalues
+
+
+def manhattan(Fig, file, inverted, title, min_af, min_info):
+    chromosomes, positions, minus_log10_pvalues = read_regenie_continuous(file, min_af, min_info, 100)
+
+    df_gwas = pd.DataFrame(data = {'chromosome': chromosomes, 'position': positions, 'minus_log10_pvalue': minus_log10_pvalues}, copy = False)
+
+    print(f'Plotting {file}... ', end = '', flush = True) 
+    ax = Fig
+    colors = ['black', 'gray']
+    x_labels = []
+    x_labels_pos = []
+    position_offset = 0
+    x_start = None
+    x_stop = None
+    for i in range(1, 24):
+        df_gwas_chrom = df_gwas[df_gwas.chromosome == i]
+        if len(df_gwas_chrom) == 0:
+            continue
+        if x_start is None:
+            x_start = df_gwas_chrom.position.min()
+        chrom_length = df_gwas_chrom.position.max()
+        ax.scatter(x = df_gwas_chrom.position + position_offset, y = df_gwas_chrom.minus_log10_pvalue, color = colors[i % len(colors)], s = 9)
+        x_labels.append(f'{i}' if i < 23 else 'X')
+        x_labels_pos.append(position_offset + chrom_length / 2)
+        position_offset += chrom_length
+    x_stop = position_offset
+
+    # set X-axis and Y-axis ticks and tick labels
+    ax.set_xticks(x_labels_pos)
+    ax.set_xticklabels(x_labels, fontsize = 16)
+    ax.tick_params(axis='y', labelsize = 16)
+
+    # set axis limits
+    ax.set_xlim([x_start, x_stop])
+    ax.set_ylim(bottom = 0)
+
+    # set and adjust axis labels depending on the plot type
+    ax.set_ylabel('-'+r'$\log_{10}$' +'(P-value)', fontsize = 20)
+    if inverted :
+        ax.invert_yaxis()
+        plt.tick_params(
+            axis = 'x',          # changes apply to the x-axis
+            which = 'both',      # both major and minor ticks are affected
+            bottom = False,      # ticks along the bottom edge are off
+            top = False,         # ticks along the top edge are off
+            labelbottom = False)
+        ax.set_title(title, fontsize = 24, y = 0, pad = -24)
+    else :
+        ax.set_xlabel('Chromosome', fontsize = 20)
+        ax.set_title(title, fontsize = 24)
+    
+    # draw significance line
+    ax.axhline(y=SIGNIFICANCE_THRESHOLD, color='r', linestyle='-')
+
+    print('Done.')
 
 
 if __name__ == '__main__':
-	args = argparser.parse_args()
-	trait=args.trait
-	if args.in_file2 is not None:
-		fig, axs = plt.subplots(2, 1, constrained_layout=True,figsize=(32,15))
-		manhattan(axs[0],args.in_file1,False, args.in_file_Title1)
-		manhattan(axs[1],args.in_file2,True, args.in_file_Title2)
-		plt.suptitle(trait.replace('_',' '),fontsize=22)
-		fig.savefig(trait + '.png', dpi=300)
-	if args.in_file2 is None:
-		fig, axs = plt.subplots(1, 1, constrained_layout=True,figsize=(32,8))
-		manhattan(axs,args.in_file1,False, args.in_file_Title1)
-		fig.savefig(trait + '.png', dpi=300)
+    args = argparser.parse_args()
+    
+    if (len(args.in_gwas_files) != len(args.in_gwas_titles)):
+        raise Exception('Number of titles must be equal to the number of input GWAS files')
+
+    if (len(args.in_gwas_files) == 2):
+        fig, axs = plt.subplots(2, 1, constrained_layout=True,figsize=(32,15))
+        manhattan(axs[0], args.in_gwas_files[0], False, args.in_gwas_titles[0], args.min_af, args.min_info)
+        manhattan(axs[1], args.in_gwas_files[1], True, args.in_gwas_titles[1], args.min_af, args.min_info)
+        fig.savefig(f'{args.out_filename}.png', dpi=300)
+    elif (len(args.in_gwas_files) == 1):
+        fig, axs = plt.subplots(1, 1, constrained_layout=True,figsize=(32,8))
+        manhattan(axs, args.in_gwas_files[0], False, args.in_gwas_titles[0], args.min_af, args.min_info)
+        fig.savefig(f'{args.out_filename}.png', dpi=300)
+    else:
+        raise Exception("Maximum two GWAS files are allowed in input.")
