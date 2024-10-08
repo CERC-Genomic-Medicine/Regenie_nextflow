@@ -257,7 +257,7 @@ process run_association_tesing {
    //scratch false
 
    cpus 8
-   memory "16GB"
+   memory "32GB"
    time "4h"
 
    container "${params.regenie_container}"
@@ -348,7 +348,7 @@ workflow {
    // Genomic predictions
    if (params.genomic_predictions_files) {
       // If specified, then load pre-computed genomic predictions for phenotypes
-      genomic_predictions = path.map(it -> [it.getName().replaceAll(/_pred.list$/, ""), it, files(it.toString().replaceAll(/_pred.list$/, "_*.loco.gz"), checkIfExists: true)])
+      genomic_predictions = Channel.fromPath(params.genomic_predictions_files).map(it -> [it.getName().replaceAll(/_pred.list$/, ""), it, files(it.toString().replaceAll(/_pred.list$/, "_*.loco.gz"), checkIfExists: true)])
    } else {
       // Load pruned genotypes
       pruned_genotypes = Channel.fromPath(params.pruned_genotypes_file).map(f -> f.getExtension() == "pgen" ? [f, file("${f.getParent()}/${f.getBaseName()}.psam"), file("${f.getParent()}/${f.getBaseName()}.pvar")] : [f, file("${f.getParent()}/${f.getBaseName()}.sample"), ""])
