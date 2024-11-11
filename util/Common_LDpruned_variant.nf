@@ -39,7 +39,7 @@ process filter_by_chrom_VCF_BCF {
    # Exclude long-range LD and low complexity regions
    plink_exclude_option="--exclude bed0 ${workflow.projectDir}/Low_complexity_regions/${params.ld_regions}.bed.gz ${workflow.projectDir}/Low_complexity_regions/${params.lcr_regions}.bed.gz"
   
-   if [[ "${params.hapmap_sites}" == "" ]]; then
+   if [[ -z "${params.hapmap_sites}" ]]; then
       plink_extract_option=""
    else
       plink_extract_option="--extract bed0 ${workflow.projectDir}/Low_complexity_regions/${params.hapmap_sites}.bed.gz"
@@ -117,7 +117,7 @@ process filter_by_chrom_pgen_bgen {
    # Exclude long-range LD and low complexity regions
    plink_exclude_option="--exclude bed0 ${workflow.projectDir}/Low_complexity_regions/${params.ld_regions}.bed.gz ${workflow.projectDir}/Low_complexity_regions/${params.lcr_regions}.bed.gz"
 
-   if [[ ${params.hapmap_sites} == "" ]]; then
+   if [[ -z "${params.hapmap_sites}" ]]; then
       plink_extract_option=""
    else
       plink_extract_option="--extract bed0 ${workflow.projectDir}/Low_complexity_regions/${params.hapmap_sites}.bed.gz"
