@@ -1,329 +1,447 @@
-process CHUNK_PHENOTYPE {
-  label 'chunk'
-  executor 'local'
-  cache 'lenient'
+#!/usr/bin/env nextflow
+
+/*
+* AUTHOR: Vincent Chapdelaine <vincent.chapdelaine@mcgill.ca>; Daniel Taliun, PhD <daniel.taliun@mcgill.ca>
+* VERSION: 2.0
+* YEAR: 2025
+*/
+
+
+process split_phenotypes {
+   executor 'local'
+   cache 'lenient'
   
-  input:
-  path pheno_file
+   input:
+   path phenotypes_file, stageAs: "phenotypes_file.txt"
   
-  output:
-  path "chunk_*_phe.txt"
+   output:
+   path "*.phenotype.txt"
 
-  publishDir "${params.OutDir}/chunked_pheno", pattern: "chunk_*_phe.txt", mode: "copy"
+   script:
+   """
+   # make sure phenotype file is tab-delimited
+   cat ${phenotypes_file} | tr " " "\t" > temp_phenotypes_file.txt  
 
-  script:
-  """
-    # make sure phenotype file is tab-delimited
-    cat ${pheno_file} | tr " " "\t" > temp_pheno_file.txt  
-
-    Nb_PHENO=\$((\$(head -n 1 temp_pheno_file.txt | wc -w ) - 2)) 
-    val=\$((\$Nb_PHENO/${params.PheStep}))
-    mod=\$((\$Nb_PHENO%${params.PheStep}))
-    if [[ \$val > 0 ]]; then
-        for ((Q=1;Q<=\$val;Q++)); do
-            cut -f 1,2,\$((( \$Q - 1) * ${params.PheStep} + 3 ))-\$(((\$Q * ${params.PheStep}) + 2)) temp_pheno_file.txt > chunk_\${Q}_phe.txt
-        done
-        if [[ \$mod != 0 ]]; then
-            cut -f 1,2,\$((( \$Q - 1) * ${params.PheStep} + 3 ))-\$(\$Nb_PHENO + 3) temp_pheno_file.txt > chunk_\${Q}_phe.txt
-        fi
-    else
-        cp temp_pheno_file.txt chunk_1_phe.txt
-    fi
-  """
+   n_cols=`head -n 1 temp_phenotypes_file.txt | wc -w` 
+   
+   for ((i=3;i<=\${n_cols};i++)); do
+      name=`head -n 1 temp_phenotypes_file.txt | cut -f\${i}`
+      cut -f 1,2,\${i} temp_phenotypes_file.txt > \${name}.phenotype.txt
+   done
+   """
 }
 
-process STEP1_L0 {
-  label 'STEP_1_0'
-  cache 'lenient'
-  scratch true
 
-  input:
-  tuple val(pheno_chunk_no), path(pheno_chunk), path(genotypes_file), path(sample_file), path(additional_file)
-  each path(covar_file)
+process split_first_level_ridge_regression {
+   executor 'local'
+   cache 'lenient'
 
-  output:
-  tuple val(pheno_chunk_no), path(pheno_chunk), path("fit_bin${pheno_chunk_no}.master"), path("fit_bin${pheno_chunk_no}_*.snplist"), emit: step1_l0
-  path "*.log", emit: step1_l0_logs
+   container "${params.regenie_container}"
 
-  publishDir "${params.OutDir}/step1_l0/step1_l0_logs", pattern: "*.log", mode: "copy"
-  publishDir "${params.OutDir}/step1_l0/step1_l0_${pheno_chunk_no}", pattern: "fit_bin${pheno_chunk_no}_*.snplist", mode: "copy"
+   input:
+   tuple path(phenotypes_file), path(genotypes_file), path(sample_file), path(additional_file)
+   each path(covariates_file)
 
-  script:
-  """
-if [ ${genotypes_file.getExtension()} = "pgen" ]; then
-     input="--pgen ${genotypes_file.getBaseName()}"
-  else
-     input="--bgen ${genotypes_file} --sample ${sample_file}"
-  fi
+   output:
+   tuple path(phenotypes_file), path("${phenotypes_file.getName()}.master"), path("${phenotypes_file.getName()}_job*.snplist"), emit: out
 
-  if [ -z "${params.CatCovar}" ]; then
-     CovarCat=""
-  else
-      CovarCat="--catCovarList ${params.CatCovar}"
-  fi
+   script:
+   """
+   if [ ${genotypes_file.getExtension()} = "pgen" ]; then
+      input_genotypes="--pgen ${genotypes_file.getBaseName()}"
+   else
+      input_genotypes="--bgen ${genotypes_file} --sample ${sample_file}"
+   fi
 
-  regenie \
-    --step 1 \
-    --loocv \
-    --af-cc --bt \
-  --firth \
-  --pThresh 0.05 \
-    --bsize ${params.Bsize} \
-    --gz \
-    --phenoFile ${pheno_chunk} \
-    --covarFile ${covar_file} \$CovarCat \
-    \${input} \
-    --out fit_bin_${pheno_chunk_no} \
-    --split-l0 fit_bin${pheno_chunk_no},${params.njobs} \
-    --threads ${params.Threads_S_10} \
-    --lowmem
-  """
+   if [ -z "${params.categorical_covariates}" ]; then
+      categorical_covariates=""
+   else
+      categorical_covariates="--catCovarList ${params.categorical_covariates}"
+   fi
+
+   if [ -z "${params.sex_specific}" ]; then
+      sex_specific=""
+   else
+      sex_specific="--sex-specific ${params.sex_specific}"
+   fi
+
+   # This step doesn't need multi-threading because it just decides on distribution of the blocks between the machines for parallel processini
+   regenie \
+      --step 1 \
+      --loocv \
+      --bt \
+      --skip-dosage-comp \
+      --bsize ${params.block_size} \
+      --gz \
+      --phenoFile ${phenotypes_file} \
+      --covarFile ${covariates_file} \${categorical_covariates} \
+      \${input_genotypes} \${sex_specific} \
+      --out ${phenotypes_file.getName()} \
+      --split-l0 ${phenotypes_file.getName()},${params.n_ridge_regression_jobs} \
+      --threads 1 \
+      --lowmem
+   """
 }
 
-process STEP_1_L1 {
-  label 'STEP_1_1'
-  cache 'lenient'
-  scratch false
 
-  input:
-  tuple val(pheno_chunk_no), path(pheno_chunk), path(master), path(snplist),val(run), path(genotypes_file), path(sample_file), path(additional_file)
-  each path(covar_file)
+process run_first_level_ridge_regression {
+   cache 'lenient'
 
-  output:
-  tuple val(pheno_chunk_no), path(pheno_chunk), path(master),path("*_l0_Y*"), emit: step_1_l1_out
-  path "*.log", emit: step1_l1_logs
+   cpus 8
+   memory "16 GB"
+   time "4h"
 
-  publishDir "${params.OutDir}/step1_l1/step1_l1_logs", pattern: "*.log", mode: "copy"
-  publishDir "${params.OutDir}/step1_l1/step1_l1_chunk_${pheno_chunk_no}/", pattern: "*_l0_Y*", mode: "copy"
+   container "${params.regenie_container}"
 
-  script:
-  """
-  if [ ${genotypes_file.getExtension()} = "pgen" ]; then
-     input="--pgen ${genotypes_file.getBaseName()}"
-  else
-     input="--bgen ${genotypes_file} --sample ${sample_file}"
-  fi
+   input:
+   tuple path(phenotypes_file), path(master_file), path(snplist_file), path(genotypes_file), path(sample_file), path(additional_file)
+   each path(covariates_file)
 
-  if [ -z "${params.CatCovar}" ]; then
-     CovarCat=""
-  else
-      CovarCat="--catCovarList ${params.CatCovar}"
-  fi
+   output:
+   tuple val("${phenotypes_file.getName()}"), path("*_l0_Y*"), emit: out
+   path "*.log", emit: log
+ 
+   publishDir "${params.output_dir}/genomic_predictions/${phenotypes_file.getName()}/", pattern: "*_l0_Y*", mode: "copy"
+   publishDir "${params.output_dir}/genomic_predictions/${phenotypes_file.getName()}/", pattern: "*.log", mode: "copy"
+  
+   script:
+   """
+   if [ ${genotypes_file.getExtension()} = "pgen" ]; then
+      input_genotypes="--pgen ${genotypes_file.getBaseName()}"
+   else
+      input_genotypes="--bgen ${genotypes_file} --sample ${sample_file}"
+   fi
 
+   if [ -z "${params.categorical_covariates}" ]; then
+      categorical_covariates=""
+   else
+      categorical_covariates="--catCovarList ${params.categorical_covariates}"
+   fi
 
-  i=${run}
-  echo \$i
-  regenie \
-    --step 1 \
-    --loocv \
-    --af-cc --bt --firth --pThresh 0.05 \
-    --bsize ${params.Bsize} \
-    --gz \
-    --phenoFile ${pheno_chunk} \
-    --covarFile ${covar_file} \$CovarCat \
-    \${input} \
-    --out \${i} \
-    --run-l0 ${master},\${i} \
-    --threads ${params.Threads_S_11} \
-    --lowmem
-  """
+   if [ -z "${params.sex_specific}" ]; then
+      sex_specific=""
+   else
+      sex_specific="--sex-specific ${params.sex_specific}"
+   fi
+
+   i=`echo "${snplist_file}" | sed -nr 's/.*_job([1-9][0-9]*).snplist/\\1/p'`
+   regenie \
+      --step 1 \
+      --loocv \
+      --bt \
+      --skip-dosage-comp \
+      --bsize ${params.block_size} \
+      --gz \
+      --phenoFile ${phenotypes_file} \
+      --covarFile ${covariates_file} \${categorical_covariates} \
+      \${input_genotypes} \${sex_specific} \
+      --out ${phenotypes_file.getName()}_job\${i}_first_level_ridge_regression \
+      --run-l0 ${master_file},\${i} \
+      --threads 8 \
+      --lowmem
+   """
 }
 
-process STEP_1_L2 {
-  label 'STEP_1_2'
-  cache 'lenient'
-  scratch false
 
-  input:
-  tuple val(pheno_chunk_no), path(pheno_chunk), path(master),path(predictions), path(genotypes_file), path(sample_file), path(additional_file)
-  each path(covar_file)
+process run_second_level_ridge_regression {
+   cache 'lenient'
 
-  output:
-  tuple val(pheno_chunk_no), path(pheno_chunk), path("fit_bin${pheno_chunk_no}_loco_pred.list"), path("*.loco.gz"), emit: step1_l2_out
-  path "*.log", emit: step1_l2_logs
+   cpus 8
+   memory "16GB"
+   time "1h"
 
-  publishDir "${params.OutDir}/step1_l2/step1_l2_chunk_${pheno_chunk_no}", pattern: "*.loco.gz", mode: "copy"
-  publishDir "${params.OutDir}/step1_l2/step1_l2_chunk_${pheno_chunk_no}", pattern: "fit_bin${pheno_chunk_no}_loco_pred.list", mode: "copy"
-  publishDir "${params.OutDir}/step1_l2/logs", pattern: "*.log", mode: "copy"
-  script:
-  """
-  if [ ${genotypes_file.getExtension()} = "pgen" ]; then
-     input="--pgen ${genotypes_file.getBaseName()}"
-  else
-     input="--bgen ${genotypes_file} --sample ${sample_file}"
-  fi
+   container "${params.regenie_container}"
 
-  if [ -z "${params.CatCovar}" ]; then
-     CovarCat=""
-  else
-      CovarCat="--catCovarList ${params.CatCovar}"
-  fi
+   input:
+   tuple path(phenotypes_file), path(master_file), path(first_level_predictions), path(genotypes_file), path(sample_file), path(additional_file)
+   each path(covariates_file)
 
-  regenie \
-    --step 1 \
-    --loocv \
-    --bsize ${params.Bsize} \
-    --gz \
-    --phenoFile ${pheno_chunk} \
-    --covarFile ${covar_file} \$CovarCat \
-    \${input} \
-    --out fit_bin${pheno_chunk_no}_loco \
-    --run-l1 ${master} \
-    --keep-l0 \
-    --threads ${params.Threads_S_12} \
-    --use-relative-path \
-    --af-cc --bt \
-  --firth \
-  --pThresh 0.05 \
-    --lowmem
-    """
+   output:
+   tuple val("${phenotypes_file.getName()}"), path("*_pred.list"), path("*.loco.gz"), emit: out
+   path "*.log", emit: logs
+
+   publishDir "${params.output_dir}/genomic_predictions/${phenotypes_file.getName()}/", pattern: "*_pred.list", mode: "copy"
+   publishDir "${params.output_dir}/genomic_predictions/${phenotypes_file.getName()}/", pattern: "*.loco.gz", mode: "copy"
+   publishDir "${params.output_dir}/genomic_predictions/${phenotypes_file.getName()}/", pattern: "*.log", mode: "copy"
+
+   script:
+   """
+   if [ ${genotypes_file.getExtension()} = "pgen" ]; then
+      input_genotypes="--pgen ${genotypes_file.getBaseName()}"
+   else
+      input_genotypes="--bgen ${genotypes_file} --sample ${sample_file}"
+   fi
+
+   if [ -z "${params.categorical_covariates}" ]; then
+      categorical_covariates=""
+   else
+      categorical_covariates="--catCovarList ${params.categorical_covariates}"
+   fi
+
+   if [ -z "${params.sex_specific}" ]; then
+      sex_specific=""
+   else
+      sex_specific="--sex-specific ${params.sex_specific}"
+   fi
+
+   regenie \
+      --step 1 \
+      --loocv \
+      --bt \
+      --skip-dosage-comp \
+      --bsize ${params.block_size} \
+      --gz \
+      --phenoFile ${phenotypes_file} \
+      --covarFile ${covariates_file} \${categorical_covariates} \
+      \${input_genotypes} \${sex_specific} \
+      --out ${phenotypes_file.getName()} \
+      --run-l1 ${master_file} \
+      --keep-l0 \
+      --threads 8 \
+      --use-relative-path \
+      --lowmem
+   """
 }
+
+
+process run_all_ridge_regressions {
+   cache 'lenient'
+
+   cpus 8
+   memory "16GB"
+   time "4h"
+
+   container "${params.regenie_container}"
+
+   input:
+   tuple path(phenotypes_file), path(genotypes_file), path(sample_file), path(additional_file)
+   each path(covariates_file)
+
+   output:
+   tuple val("${phenotypes_file.getName()}"), path("*_pred.list"), path("*.loco.gz"), emit: out
+   path "*.log", emit: logs
+
+   publishDir "${params.output_dir}/genomic_predictions/${phenotypes_file.getName()}/", pattern: "*_pred.list", mode: "copy"
+   publishDir "${params.output_dir}/genomic_predictions/${phenotypes_file.getName()}/", pattern: "*.loco.gz", mode: "copy"
+   publishDir "${params.output_dir}/genomic_predictions/${phenotypes_file.getName()}/", pattern: "*.log", mode: "copy"
+ 
+   script:
+   """
+   if [ ${genotypes_file.getExtension()} = "pgen" ]; then
+      input_genotypes="--pgen ${genotypes_file.getBaseName()}"
+   else
+      input_genotypes="--bgen ${genotypes_file} --sample ${sample_file}"
+   fi
+
+   if [ -z "${params.categorical_covariates}" ]; then
+      categorical_covariates=""
+   else
+      categorical_covariates="--catCovarList ${params.categorical_covariates}"
+   fi
+
+   if [ -z "${params.sex_specific}" ]; then
+      sex_specific=""
+   else
+      sex_specific="--sex-specific ${params.sex_specific}"
+   fi
+
+   # Use `--strict` option when analyzing one phenotype at a time to avoid imputation of missing phenotype values (i.e. keep only individuals with non-missing phenotypes).
+   regenie \
+      --step 1 \
+      --loocv \
+      --bt \
+      --skip-dosage-comp \
+      --bsize ${params.block_size} \
+      --gz \
+      --phenoFile ${phenotypes_file} --strict \
+      --covarFile ${covariates_file} \${categorical_covariates} \
+      \${input_genotypes} \${sex_specific} \
+      --out ${phenotypes_file.getName()} \
+      --threads 8 \
+      --lowmem \
+      --use-relative-path
+   """
+}
+
 
 process chunk_chromosomes {
    cache "lenient"
-   scratch false
    executor "local"
-   cpus 1
-   label 'SNP_chunk'
 
    input:
-   path(variants_file)
+   path variants_file
 
    output:
-   path("${variants_file.getSimpleName()}_*.txt"), emit: chromosome_chunks
-
-   publishDir "${params.OutDir}/step2/Variant_Chunk", pattern: "*.txt", mode: "copy"
+   tuple val("${variants_file.getBaseName()}"), path("${variants_file.getBaseName()}_*.txt")
 
    """
    if [ ${variants_file.getExtension()} = "pvar" ]; then
       grep -v "^#" ${variants_file} | cut -f3
    else
       sqlite3 ${variants_file} "SELECT rsid FROM Variant"
-   fi | split --numeric-suffixes=1 --suffix-length=4 --additional-suffix=.txt -l ${params.SnpStep} - ${variants_file.getSimpleName()}_
+   fi | split --numeric-suffixes=1 --suffix-length=4 --additional-suffix=.txt -l ${params.gwas_chunk_size} - ${variants_file.getBaseName()}_
    """
 }
 
 
-//___________________STEP 2 main ____________________________
+process run_association_tesing {
+   cache "lenient"
+   //scratch false
 
-process step_2 {
-  label "Asscociation_testing"
-  cache "lenient"
-  scratch false
+   cpus 8
+   memory "32GB"
+   time "8h"
 
+   container "${params.regenie_container}"
 
-//Aim : Association testing
-
-  input:
-  tuple val(pheno_chunk_no), path(pheno_chunk), path(loco_pred_list), path(loco_pred), val(simple_name), path(chromosome_chunk), path(gwas_genotypes_file), path(samples_file), path(variants_file)
-  each path(covar_file)
+   input:
+   tuple path(phenotypes_file), path(loco_pred_list), path(loco_pred), path(chromosome_chunk), path(gwas_genotypes_file), path(sample_file), path(variants_file)
+   each path(covariates_file)
   
-  output:       
-  path("*.regenie.gz"), emit: summary_stats
-  path("*.log"), emit: step2_logs
-  path("*.list"), optional: true
+   output:       
+   tuple val("${chromosome_chunk.getBaseName()}"), path("*.regenie.gz"), emit: out
+   path("*.log"), emit: logs
   
+   publishDir "${params.output_dir}/GWAS/logs", pattern: "*.log", mode: "copy"
 
-  publishDir "${params.OutDir}/step2/result/", pattern: "*.regenie.gz", mode: "copy"
-  publishDir "${params.OutDir}/step2/logs", pattern: "*.log", mode: "copy"
+   """
+   if [ ${gwas_genotypes_file.getExtension()} = "pgen" ]; then
+      input_genotypes="--pgen ${gwas_genotypes_file.getBaseName()}"
+   else
+      input_genotypes="--bgen ${gwas_genotypes_file} --sample ${sample_file}"
+   fi
 
-  """
-  if [ ${gwas_genotypes_file.getExtension()} = "pgen" ]; then
-     input="--pgen ${gwas_genotypes_file.getBaseName()}"
-  else
-     input="--bgen ${gwas_genotypes_file} --sample ${samples_file}"
-  fi
+   if [ -z "${params.categorical_covariates}" ]; then
+      categorical_covariates=""
+   else
+      categorical_covariates="--catCovarList ${params.categorical_covariates}"
+   fi
 
-  if [ -z "${params.CatCovar}" ]; then
-     CovarCat=""
-  else
-      CovarCat="--catCovarList ${params.CatCovar}"
-  fi
+   if [ ${params.split_phenotypes} = true ]; then
+      strict="--strict" # Exclude individuals with any missing phenotypes.
+   else
+      strict=""
+   fi
 
+   if [ -z "${params.gene_by_sex_interaction}" ]; then
+      interaction_variable=""
+   else
+      interaction_variable="--interaction ${params.gene_by_sex_interaction}"
+   fi
 
-  regenie \
+   if [ -z "${params.sex_specific}" ]; then
+      sex_specific=""
+   else
+      sex_specific="--sex-specific ${params.sex_specific}"
+   fi
+
+   regenie \
     --step 2 \
     --gz \
     --loocv \
-    --bsize ${params.Bsize} \
-    --phenoFile ${pheno_chunk} \
-    --covarFile ${covar_file} \$CovarCat \
-    \${input} \
-    --out "${pheno_chunk_no}_${chromosome_chunk.getSimpleName()}_assoc." \
+    --bt \
+    --af-cc \
+    --firth --approx \
+    --pThresh 0.05 \
+    --skip-dosage-comp \
+    --bsize ${params.block_size} \
+    --phenoFile ${phenotypes_file} \${strict} \
+    --covarFile ${covariates_file} \${categorical_covariates} \${interaction_variable} \
+    \${input_genotypes} \${sex_specific} \
+    --out "${chromosome_chunk.getBaseName()}" \
     --pred ${loco_pred_list} \
-    --af-cc  --bt \
-  --firth --approx  ${params.Binairy}\
-  --pThresh 0.05 \
     --extract ${chromosome_chunk} \
-    --threads ${params.Threads_S_2} \
+    --threads 8 \
     --lowmem
-    """
+   """
 }
 
 
-//______________________MERGE______________________
-process step_2_merge {
-  label "Merging"
-  cache "lenient"
-  scratch false
+process merge_association_results {
+   cache "lenient"
+   //scratch false
 
-  //Aim : Natural Order Concatenated Association file (1 per phenotype)
+   cpus 1
+   memory "2GB"
+   time "1h"
 
-  input:
-  tuple val(pheno_name), path(summary)
+   input:
+   tuple val(filename), path(chunked_association_results)
 
-  output:       
-  path "*.txt.gz", emit: summary_stats_final
-  
+   output:
+   path "${filename}", emit: out
 
-  publishDir "${params.OutDir}/step2/summary", pattern: "*.txt.gz", mode: "copy"
+   publishDir "${params.output_dir}/GWAS/results", pattern: "${filename}", mode: "copy"
 
-  """
-  gzip -dc `find . -name "*.regenie.gz" -print -quit` | head -n1 | gzip -c > ${pheno_name}.txt.gz
-  for f in `find . -name "*.regenie.gz" | sort -V`; do
-     gzip -dc \$f; 
-  done | grep -v "^CHROM" | gzip -c >> ${pheno_name}.txt.gz
-  """
+   """
+   gzip -dc `find . -name "*_${filename}" -print -quit` | head -n1 | gzip -c > ${filename}
+   for f in `find . -name "*_${filename}" | sort -V`; do
+      gzip -dc \$f;
+   done | grep -v "^CHROM" | gzip -c >> ${filename}
+   """
 }
+
 
 workflow {
-  //Input files
-     Common_LD_pruned_variant = Channel.fromPath(params.genotypes_file).map(f -> f.getExtension() == "pgen" ? [f, file("${f.getParent()}/${f.getBaseName()}.psam"), file("${f.getParent()}/${f.getBaseName()}.pvar")] : [f, file("${f.getParent()}/${f.getBaseName()}.sample"), ""])
-     GWAS_variant = Channel.fromPath(params.gwas_genotypes_files).map(f -> f.getExtension() == "pgen" ? ["${f.getSimpleName()}".split('_')[0], f, file("${f.getParent()}/${f.getBaseName()}.psam"), file("${f.getParent()}/${f.getBaseName()}.pvar")] : ["${f.getSimpleName()}".split('_')[1], f, file("${f.getParent()}/${f.getBaseName()}.sample"), f + ".bgi"])
-     Covariant=Channel.fromPath(params.covar_file)
+   if (params.sex_specific && params.gene_by_sex_interaction) {
+      println "Error: male-only or female-only analyses can't be run together with the gene-by-sex interaction."
+      return 1
+   }
 
-  //chunking Phenotype
-     chunks = CHUNK_PHENOTYPE(Channel.fromPath(params.pheno_file))
-  //chunking SNP
-     SNP_chunks = chunk_chromosomes(Channel.fromPath(params.gwas_genotypes_files).map(f -> f.getExtension() == "pgen" ? file("${f.getParent()}/${f.getBaseName()}.pvar") : f + ".bgi"))
-     S=SNP_chunks.chromosome_chunks.flatten()
-     T=S.map(t -> ["${t.getSimpleName()}".split('_')[0],t])
-     SNP_chunk = T.combine(GWAS_variant, by: 0)
+   // Load phenotypes
+   if (params.split_phenotypes == true) {
+      phenotypes = split_phenotypes(Channel.fromPath(params.phenotypes_file)).flatten()
+   } else {
+      phenotypes = Channel.fromPath(params.phenotypes_file)
+   }
+   //phenotypes.view()
 
-  //Regenie Step 1
-     step1_L0_input = chunks.flatten().map { f -> [f.getBaseName().split('_')[1], f] }
+   // Load covariates
+   covariates = Channel.fromPath(params.covariates_file)
+   //covariates.view()
 
-     S1_L0=STEP1_L0(step1_L0_input.combine(Common_LD_pruned_variant), Covariant )
-  
-  // Divides each S1_L0 SNP list into a process
-  // Includes the modeling data
-     jobs_S1=Channel.from( 1..params.njobs )
-     S1_L1_input=S1_L0.step1_l0.combine(jobs_S1)
-     S1_L1=STEP_1_L1(S1_L1_input.combine(Common_LD_pruned_variant), Covariant)
+   // Genomic predictions
+   if (params.genomic_predictions_files) {
+      // If specified, then load pre-computed genomic predictions for phenotypes
+      genomic_predictions = Channel.fromPath(params.genomic_predictions_files).map(it -> [it.getName().replaceAll(/_pred.list$/, ""), it, files(it.toString().replaceAll(/_pred.list$/, "_*.loco.gz"), checkIfExists: true)])
+   } else {
+      // Load pruned genotypes
+      pruned_genotypes = Channel.fromPath(params.pruned_genotypes_file).map(f -> f.getExtension() == "pgen" ? [f, file("${f.getParent()}/${f.getBaseName()}.psam"), file("${f.getParent()}/${f.getBaseName()}.pvar")] : [f, file("${f.getParent()}/${f.getBaseName()}.sample"), ""])
+      //pruned_genotypes.view()
 
-  //Regroup the output of S1_L1 per phenotype_chuck
-     STEP_1_L1_reformated = S1_L1.step_1_l1_out.groupTuple(by: 0).map{ t -> [t[0], t[1].sort()[0], t[2].sort()[0], t[3].flatten().sort{it.name}] }
+      // If multiple phenotypes are split and analyzed one by one, then each phenotype is analyzed in a single compute job/machine.
+      // If multiple phenotypes are analyzed in bulk, then compute is distributed to multiple jobs/machines by chunking chromosome and the number of jobs is controlled by `params.n_ridge_regression_jobs`.
+      if (params.split_phenotypes == true) {
+         genomic_predictions = run_all_ridge_regressions(phenotypes.combine(pruned_genotypes), covariates).out
+      } else {
+         first_level_ridge_regression_jobs = split_first_level_ridge_regression(phenotypes.combine(pruned_genotypes), covariates).out
+         //first_level_ridge_regression_jobs.view()
 
-     S1 = STEP_1_L2(STEP_1_L1_reformated.combine(Common_LD_pruned_variant), Covariant)
+         scattered_first_level_predictions = run_first_level_ridge_regression(first_level_ridge_regression_jobs.transpose().combine(pruned_genotypes), covariates).out
+         //scattered_first_level_predictions.view()
 
-  // Regenie Step 2
-     S2_input = S1.step1_l2_out.combine(SNP_chunk)
+         gathered_first_level_predictions = first_level_ridge_regression_jobs.map(it -> [it[0].getName(), it[0], it[1]]).join(
+            scattered_first_level_predictions.groupTuple(by: [0]), by: [0], failOnMismatch: true, failOnDuplicate: true).map(it -> [it[1], it[2], it[3].flatten()])
+         //gathered_first_level_predictions.view()
 
-    S2 = step_2(S2_input,Covariant)
-    S2.summary_stats.flatten().map{ t -> [t.baseName.split('.')] }.view()
-    S2_groups = S2.summary_stats.flatten().map{ t -> [t.baseName.tokenize('.')[1],t] }.groupTuple()
-  // Step 2 Merged
-     S2_Merged = step_2_merge(S2_groups)
+         genomic_predictions = run_second_level_ridge_regression(gathered_first_level_predictions.combine(pruned_genotypes), covariates).out
+      }
+   }
+   //genomic_predictions.view()
 
+   // Load GWAS genotypes:
+   gwas_genotypes = Channel.fromPath(params.gwas_genotypes_files).map(f -> f.getExtension() == "pgen" ? ["${f.getBaseName()}", f, file("${f.getParent()}/${f.getBaseName()}.psam"), file("${f.getParent()}/${f.getBaseName()}.pvar")] : ["${f.getBaseName()}", f, file("${f.getParent()}/${f.getBaseName()}.sample"), f + ".bgi"])
+   //gwas_genotypes.view()
+
+   // Split gwas variants into chunks for parallel processing based on pvar (PLINK) or bgi (BGEN) files.
+   gwas_chunks = chunk_chromosomes(gwas_genotypes.map(it -> it[3])).transpose().combine(gwas_genotypes, by: [0]).map(it -> it.drop(1))
+   //gwas_chunks.view()
+
+   // Run GWAS
+   association_results_by_chunk = run_association_tesing(
+      phenotypes.map(it -> [it.getName(), it]).join(genomic_predictions, by: [0], failOnMismatch: true, failOnDuplicate: true).map(it -> it.drop(1)).combine(gwas_chunks), 
+      covariates).out
+
+   merge_association_results(association_results_by_chunk.transpose().map(it -> [it[1].getName().replaceAll(/${it[0]}_/, ""), it[1]]).groupTuple(by: [0]))
 }
 
