@@ -109,7 +109,7 @@ process filter_by_chrom_pgen_bgen {
    """
    # Set import option
    if [ -f "${prefix}.pgen" ]; then
-      plink_import_option="--pgen ${prefix}"
+      plink_import_option="--pfile ${prefix}"
    else
       plink_import_option="--bgen ${prefix}"
    fi
