@@ -59,6 +59,12 @@ process split_first_level_ridge_regression {
       categorical_covariates="--catCovarList ${params.categorical_covariates}"
    fi
 
+   if [ -z "${params.sex_specific}" ]; then
+      sex_specific=""
+   else
+      sex_specific="--sex-specific ${params.sex_specific}"
+   fi
+
    # This step doesn't need multi-threading because it just decides on distribution of the blocks between the machines for parallel processini
    regenie \
       --step 1 \
@@ -67,7 +73,7 @@ process split_first_level_ridge_regression {
       --gz \
       --phenoFile ${phenotypes_file} \
       --covarFile ${covariates_file} \${categorical_covariates} \
-      \${input_genotypes} ${params.apply_rint} \
+      \${input_genotypes} ${params.apply_rint} \${sex_specific} \
       --out ${phenotypes_file.getName()} \
       --split-l0 ${phenotypes_file.getName()},${params.n_ridge_regression_jobs} \
       --threads 1 \
@@ -110,6 +116,12 @@ process run_first_level_ridge_regression {
       categorical_covariates="--catCovarList ${params.categorical_covariates}"
    fi
 
+   if [ -z "${params.sex_specific}" ]; then
+      sex_specific=""
+   else
+      sex_specific="--sex-specific ${params.sex_specific}"
+   fi
+
    i=`echo "${snplist_file}" | sed -nr 's/.*_job([1-9][0-9]*).snplist/\\1/p'`
    regenie \
       --step 1 \
@@ -118,7 +130,7 @@ process run_first_level_ridge_regression {
       --gz \
       --phenoFile ${phenotypes_file} \
       --covarFile ${covariates_file} \${categorical_covariates} \
-      \${input_genotypes} ${params.apply_rint} \
+      \${input_genotypes} ${params.apply_rint} \${sex_specific} \
       --out ${phenotypes_file.getName()}_job\${i}_first_level_ridge_regression \
       --run-l0 ${master_file},\${i} \
       --threads 8 \
@@ -162,6 +174,12 @@ process run_second_level_ridge_regression {
       categorical_covariates="--catCovarList ${params.categorical_covariates}"
    fi
 
+   if [ -z "${params.sex_specific}" ]; then
+      sex_specific=""
+   else
+      sex_specific="--sex-specific ${params.sex_specific}"
+   fi
+
    regenie \
       --step 1 \
       --loocv \
@@ -169,7 +187,7 @@ process run_second_level_ridge_regression {
       --gz \
       --phenoFile ${phenotypes_file} \
       --covarFile ${covariates_file} \${categorical_covariates} \
-      \${input_genotypes} ${params.apply_rint}\
+      \${input_genotypes} ${params.apply_rint}  \${sex_specific} \
       --out ${phenotypes_file.getName()} \
       --run-l1 ${master_file} \
       --keep-l0 \
@@ -215,6 +233,12 @@ process run_all_ridge_regressions {
       categorical_covariates="--catCovarList ${params.categorical_covariates}"
    fi
 
+   if [ -z "${params.sex_specific}" ]; then
+      sex_specific=""
+   else
+      sex_specific="--sex-specific ${params.sex_specific}"
+   fi
+
    # Use `--strict` option when analyzing one phenotype at a time to avoid imputation of missing phenotype values (i.e. keep only individuals with non-missing phenotypes).
    regenie \
       --step 1 \
@@ -223,7 +247,7 @@ process run_all_ridge_regressions {
       --gz \
       --phenoFile ${phenotypes_file} --strict \
       --covarFile ${covariates_file} \${categorical_covariates} \
-      \${input_genotypes} ${params.apply_rint} \
+      \${input_genotypes} ${params.apply_rint} \${sex_specific} \
       --out ${phenotypes_file.getName()} \
       --threads 8 \
       --lowmem \
@@ -291,14 +315,26 @@ process run_association_tesing {
       strict=""
    fi
 
+   if [ -z "${params.gene_by_sex_interaction}" ]; then
+      interaction_variable=""
+   else
+      interaction_variable="--interaction ${params.gene_by_sex_interaction}"
+   fi
+
+   if [ -z "${params.sex_specific}" ]; then
+      sex_specific=""
+   else
+      sex_specific="--sex-specific ${params.sex_specific}"
+   fi
+
    regenie \
     --step 2 \
     --gz \
     --loocv \
     --bsize ${params.block_size} \
     --phenoFile ${phenotypes_file} \${strict} \
-    --covarFile ${covariates_file} \${categorical_covariates} \
-    \${input_genotypes} ${params.apply_rint} \
+    --covarFile ${covariates_file} \${categorical_covariates} \${interaction_variable} \
+    \${input_genotypes} ${params.apply_rint} \${sex_specific} \
     --out "${chromosome_chunk.getBaseName()}" \
     --pred ${loco_pred_list} \
     --extract ${chromosome_chunk} \
@@ -333,6 +369,11 @@ process merge_association_results {
 }
 
 workflow {
+   if (params.sex_specific && params.gene_by_sex_interaction) {
+      println "Error: male-only or female-only analyses can't be run together with the gene-by-sex interaction."
+      return 1
+   }
+
    // Load phenotypes
    if (params.split_phenotypes == true) {
       phenotypes = split_phenotypes(Channel.fromPath(params.phenotypes_file)).flatten()
