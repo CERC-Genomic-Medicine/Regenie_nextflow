@@ -280,6 +280,8 @@ process run_association_tesing {
    cache "lenient"
    //scratch false
 
+   //errorStrategy { sleep(Math.pow(2, task.attempt) * 200 as long); return 'retry' }
+
    cpus 8
    memory "32GB"
    time "4h"
