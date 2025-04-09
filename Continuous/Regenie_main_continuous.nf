@@ -69,6 +69,7 @@ process split_first_level_ridge_regression {
    regenie \
       --step 1 \
       --loocv \
+      --skip-dosage-comp \
       --bsize ${params.block_size} \
       --gz \
       --phenoFile ${phenotypes_file} \
@@ -126,6 +127,7 @@ process run_first_level_ridge_regression {
    regenie \
       --step 1 \
       --loocv \
+      --skip-dosage-comp \
       --bsize ${params.block_size} \
       --gz \
       --phenoFile ${phenotypes_file} \
@@ -183,6 +185,7 @@ process run_second_level_ridge_regression {
    regenie \
       --step 1 \
       --loocv \
+      --skip-dosage-comp \
       --bsize ${params.block_size} \
       --gz \
       --phenoFile ${phenotypes_file} \
@@ -243,6 +246,7 @@ process run_all_ridge_regressions {
    regenie \
       --step 1 \
       --loocv \
+      --skip-dosage-comp \
       --bsize ${params.block_size} \
       --gz \
       --phenoFile ${phenotypes_file} --strict \
@@ -333,6 +337,7 @@ process run_association_tesing {
     --step 2 \
     --gz \
     --loocv \
+    --skip-dosage-comp \
     --bsize ${params.block_size} \
     --phenoFile ${phenotypes_file} \${strict} \
     --covarFile ${covariates_file} \${categorical_covariates} \${interaction_variable} \
