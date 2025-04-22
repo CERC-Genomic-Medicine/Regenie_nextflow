@@ -204,9 +204,16 @@ process run_second_level_ridge_regression {
 process run_all_ridge_regressions {
    cache 'lenient'
 
+   errorStrategy {
+      def delay = Math.pow(2, task.attempt) * 300 as long
+      println "Retrying ${task.process} attempt ${task.attempt} after ${delay}ms"
+      sleep(delay)
+      return 'retry'
+   }
+
    cpus 8
    memory "16GB"
-   time "4h"
+   time "1h"
 
    container "${params.regenie_container}"
 
@@ -271,11 +278,23 @@ process chunk_chromosomes {
    tuple val("${variants_file.getBaseName()}"), path("${variants_file.getBaseName()}_*.txt")
 
    """
+   # Get the list of variant IDs
    if [ ${variants_file.getExtension()} = "pvar" ]; then
-      grep -v "^#" ${variants_file} | cut -f3
+         grep -v "^#" ${variants_file} | cut -f3
    else
-      sqlite3 ${variants_file} "SELECT rsid FROM Variant"
-   fi | split --numeric-suffixes=1 --suffix-length=4 --additional-suffix=.txt -l ${params.gwas_chunk_size} - ${variants_file.getBaseName()}_
+         sqlite3 ${variants_file} "SELECT rsid FROM Variant"
+   fi | gzip -c > sites.txt.gz
+
+   # Choose the maximal number of equal chunks such that they don't exceed the maximal number of variants per chunk
+   n_chunks=1
+   n_sites=`gzip -dc sites.txt.gz | split -n l/1/\${n_chunks} | wc -l`
+   while [ \${n_sites} -gt ${params.gwas_chunk_size} ]; do
+         n_chunks=\$((n_chunks+1))
+         n_sites=`gzip -dc sites.txt.gz | split -n l/1/\${n_chunks} | wc -l`
+   done
+
+   # Final chunking
+   gzip -dc sites.txt.gz | split --numeric-suffixes=1 --suffix-length=4 --additional-suffix=.txt -n l/\${n_chunks} - ${variants_file.getBaseName()}_
    """
 }
 
@@ -284,11 +303,13 @@ process run_association_tesing {
    cache "lenient"
    //scratch false
 
-   //errorStrategy { sleep(Math.pow(2, task.attempt) * 200 as long); return 'retry' }
+   maxRetries 3
+   errorStrategy { sleep(Math.pow(2, task.attempt) * 200 as long); return 'retry' }
 
-   cpus 8
-   memory "32GB"
-   time "4h"
+   cpus 6
+   // memory "24GB"
+   memory { 24.GB + ((task.attempt ?: 1) - 1) * 8.GB }
+   time "1h"
 
    container "${params.regenie_container}"
 
